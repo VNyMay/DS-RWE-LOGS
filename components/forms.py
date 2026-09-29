@@ -31,12 +31,29 @@ def _index(options: list[str], value: object) -> int | None:
     return options.index(value) if value in options else None
 
 
+# Required text fields a submitter can skip by typing a single dash (see
+# validation.SKIP_MARK). If one of these is empty on an *existing* record,
+# the submitter must have typed the dash, since validation blocks a truly
+# empty save otherwise - so re-opening it for editing should show the dash
+# again rather than a blank box the editor has to fill in or re-skip.
+_DASH_SKIPPABLE = {"summary", "technology", "description", "source_url", "submitted_by"}
+
+
+def _text_value(v: dict, field: str) -> str:
+    value = v.get(field)
+    if value:
+        return value
+    if "id" in v and field in _DASH_SKIPPABLE:
+        return config.SKIP_MARK
+    return ""
+
+
 # ---------------------------------------------------------------- step 1: the case
 
 def _step_case(v: dict) -> dict:
     out: dict = {}
     out["title"] = st.text_input(_req("Title"), value=v.get("title") or "", placeholder="Facial recognition at international airports", max_chars=config.MAX_TITLE_LENGTH)
-    out["summary"] = st.text_area(_req("Short summary"), value=v.get("summary") or "", placeholder="One or two sentences: the technology, the situation, why it matters.", height=80)
+    out["summary"] = st.text_area(_req("Short summary"), value=_text_value(v, "summary"), placeholder="One or two sentences: the technology, the situation, why it matters.", height=80)
 
     left, right = st.columns(2)
     with left:
@@ -46,7 +63,7 @@ def _step_case(v: dict) -> dict:
             format_func=lambda x: f"{x} · {config.LEVEL_LABELS[x]}", width="stretch",
         )
         out["category"] = st.selectbox(_req("Category"), options=config.CATEGORIES, index=_index(config.CATEGORIES, v.get("category")), placeholder="Choose a category")
-        out["technology"] = st.text_input(_req("Technology"), value=v.get("technology") or "", placeholder="Facial recognition")
+        out["technology"] = st.text_input(_req("Technology"), value=_text_value(v, "technology"), placeholder="Facial recognition")
     with right:
         out["country"] = st.text_input("Country or location", value=v.get("country") or "", placeholder="United Kingdom")
         out["year"] = st.number_input("Year", min_value=config.YEAR_MIN, max_value=config.YEAR_MAX, value=int(v["year"]) if v.get("year") else None, step=1, format="%d", placeholder="2023")
@@ -58,7 +75,7 @@ def _step_case(v: dict) -> dict:
 
 def _step_analysis(v: dict) -> dict:
     out: dict = {}
-    out["description"] = st.text_area(_req("What happened?"), value=v.get("description") or "", placeholder="Who used the technology, where, how, and what followed.", height=150)
+    out["description"] = st.text_area(_req("What happened?"), value=_text_value(v, "description"), placeholder="Who used the technology, where, how, and what followed.", height=150)
 
     ui.kicker("3Cs")
     c1, c2, c3 = st.columns(3)
@@ -109,9 +126,9 @@ def _step_analysis(v: dict) -> dict:
 
 def _step_sources(v: dict) -> dict:
     out: dict = {}
-    out["source_url"] = st.text_input(_req("Main source URL"), value=v.get("source_url") or "", placeholder="https://example.com/article", help="Type - to skip. A moderator adds a source before approval.")
+    out["source_url"] = st.text_input(_req("Main source URL"), value=_text_value(v, "source_url"), placeholder="https://example.com/article", help="Type - to skip. A moderator adds a source before approval.")
     out["additional_sources"] = st.text_area("More sources", value=v.get("additional_sources") or "", placeholder="One per line", height=70)
-    out["submitted_by"] = st.text_input(_req("Your name or nickname"), value=v.get("submitted_by") or "", placeholder="Name or nickname", help="Shown next to the case. Type - to stay anonymous.")
+    out["submitted_by"] = st.text_input(_req("Your name or nickname"), value=_text_value(v, "submitted_by"), placeholder="Name or nickname", help="Shown next to the case. Type - to stay anonymous.")
     return out
 
 
