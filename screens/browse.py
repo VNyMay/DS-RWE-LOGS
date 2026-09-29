@@ -31,13 +31,17 @@ if not st.session_state.get("db_ready", True):
     st.stop()
 
 is_admin = navigation.is_admin()
+is_contributor = navigation.is_contributor()
+can_edit = is_admin or is_contributor
 
 # ---------------------------------------------------------------- detail view
 
 example_id = navigation.selected_example_id()
 if example_id is not None:
     try:
-        example = database.get_example_by_id(example_id, include_unapproved=is_admin)
+        example = database.get_example_by_id(example_id, include_unapproved=can_edit)
+        if example is not None and not is_admin and example["status"] not in ("approved", "pending"):
+            example = None
     except database.DatabaseError as exc:
         messages.database_error(exc)
         st.stop()
@@ -52,11 +56,19 @@ if example_id is not None:
 
     render_example_detail(example, is_admin=is_admin)
 
+    st.markdown("")
+    b1, b2, _ = st.columns([2, 2, 4])
+    if can_edit:
+        with b1:
+            if st.button("Edit this case", icon=":material/edit:", type="primary", width="stretch"):
+                st.session_state["student_edit_id"] = example["id"]
+                st.session_state.pop("last_submission", None)
+                navigation.go(navigation.PAGE_SUBMIT)
     if is_admin:
-        st.markdown("")
-        if st.button("Open in Admin / Review", icon=":material/admin_panel_settings:"):
-            st.session_state["admin_focus_id"] = example["id"]
-            navigation.go(navigation.PAGE_ADMIN)
+        with b2:
+            if st.button("Open in Admin / Review", icon=":material/admin_panel_settings:", width="stretch"):
+                st.session_state["admin_focus_id"] = example["id"]
+                navigation.go(navigation.PAGE_ADMIN)
     st.stop()
 
 # ---------------------------------------------------------------- list view
@@ -71,7 +83,7 @@ if prefill:
     st.session_state["browse_page"] = 1
 
 try:
-    options = cache.filter_options(None if is_admin else "approved")
+    options = cache.filter_options(None if is_admin else (["approved", "pending"] if is_contributor else "approved"))
 except database.DatabaseError as exc:
     messages.database_error(exc)
     st.stop()
@@ -138,7 +150,7 @@ with st.container(border=True, key="section-browse-filters"):
         with h4:
             status_choice = st.selectbox("Status", [ANY] + config.STATUSES, key="browse_status", format_func=lambda s: s if s == ANY else config.STATUS_LABELS[s])
     else:
-        status_choice = "approved"
+        status_choice = ["approved", "pending"] if is_contributor else "approved"
 
     active = [
         label for label, value in (
@@ -162,7 +174,7 @@ if sort == "relevance" and not query.strip():
 page = int(st.session_state.get("browse_page", 1))
 filter_signature = (
     query, level_choice, tuple(category), tuple(technology), tuple(country), tuple(concept), tuple(content),
-    tuple(context), tuple(ethical_issue), year_from, year_to, sort_label, status_choice,
+    tuple(context), tuple(ethical_issue), year_from, year_to, sort_label, tuple(status_choice) if isinstance(status_choice, list) else status_choice,
 )
 if st.session_state.get("browse_signature") != filter_signature:
     st.session_state["browse_signature"] = filter_signature
@@ -208,7 +220,7 @@ else:
     first = (page - 1) * config.PAGE_SIZE + 1
     last = min(total, page * config.PAGE_SIZE)
     ui.section_heading(f"{total} example{'s' if total != 1 else ''}", f"{first}-{last} of {total}" if pages_total > 1 else None)
-    cards.example_grid(results, columns=2, key_prefix="browse", show_status=is_admin)
+    cards.example_grid(results, columns=2, key_prefix="browse", show_status=can_edit)
 
     if pages_total > 1:
         st.markdown("")

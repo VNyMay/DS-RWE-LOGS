@@ -142,6 +142,11 @@ def get_admin_password() -> str | None:
     return _read_secret("ADMIN_PASSWORD")
 
 
+def get_contributor_code() -> str | None:
+    """The shared class code that unlocks editing, or None when not configured."""
+    return _read_secret("CONTRIBUTOR_CODE")
+
+
 def get_database_url() -> str | None:
     """A PostgreSQL connection string, or None to use the local SQLite file."""
     return _read_secret("DATABASE_URL")

@@ -18,10 +18,8 @@ All queries are parameterised. Never build SQL from user text.
 from __future__ import annotations
 
 import logging
-import secrets
 import sqlite3
 from contextlib import contextmanager
-import re
 from datetime import datetime, timezone
 from typing import Any, Iterator
 
@@ -73,7 +71,6 @@ COLUMNS: list[str] = [
     "status",
     "reviewer_notes",
     "is_demo",
-    "edit_code",
 ]
 
 # Fields the user may edit. Everything else is managed by the application.
@@ -93,7 +90,7 @@ REQUIRED_TEXT_FIELDS = ["title", "category", "level"]
 LIST_FIELDS = ("ethical_issues", "concepts", "content_strands", "contexts", "tags")
 
 # Only these columns are private: they never leave the admin page.
-PRIVATE_FIELDS = ["reviewer_notes", "edit_code"]
+PRIVATE_FIELDS = ["reviewer_notes"]
 
 # Columns inspected by keyword search, with their weight for relevance sorting.
 SEARCH_FIELDS: list[tuple[str, int]] = [
@@ -157,8 +154,7 @@ CREATE TABLE IF NOT EXISTS examples (
     updated_date         TEXT    NOT NULL,
     status               TEXT    NOT NULL DEFAULT 'pending',
     reviewer_notes       TEXT,
-    is_demo              INTEGER NOT NULL DEFAULT 0,
-    edit_code            TEXT
+    is_demo              INTEGER NOT NULL DEFAULT 0
 )
 """
 
@@ -168,7 +164,6 @@ _INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_examples_country ON examples (country)",
     "CREATE INDEX IF NOT EXISTS idx_examples_year ON examples (year)",
     "CREATE INDEX IF NOT EXISTS idx_examples_level ON examples (level)",
-    "CREATE INDEX IF NOT EXISTS idx_examples_edit_code ON examples (edit_code)",
 ]
 
 # Columns added after the first release, with the SQL used to add them to an
@@ -180,7 +175,6 @@ _MIGRATIONS: list[tuple[str, str]] = [
     ("contexts", "ALTER TABLE examples ADD COLUMN contexts TEXT"),
     ("hl_challenge", "ALTER TABLE examples ADD COLUMN hl_challenge TEXT"),
     ("intervention", "ALTER TABLE examples ADD COLUMN intervention TEXT"),
-    ("edit_code", "ALTER TABLE examples ADD COLUMN edit_code TEXT"),
 ]
 
 # Columns that used to be NOT NULL and may now be skipped with a dash.
@@ -256,22 +250,6 @@ def _row_to_dict(row: Any) -> dict:
     if isinstance(row, dict):
         return dict(row)
     return {key: row[key] for key in row.keys()}
-
-
-# Letters and digits that are hard to confuse with each other (no 0/O, 1/I).
-_EDIT_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-
-
-def new_edit_code() -> str:
-    """A random code like 'K7PQ-3XMZ' that lets a contributor edit their pending case."""
-    raw = "".join(secrets.choice(_EDIT_CODE_ALPHABET) for _ in range(8))
-    return f"{raw[:4]}-{raw[4:]}"
-
-
-def normalize_edit_code(text: str | None) -> str:
-    """Upper-case, drop spaces and dashes, and re-insert the dash: 'k7pq 3xmz' -> 'K7PQ-3XMZ'."""
-    raw = re.sub(r"[^A-Z0-9]", "", (text or "").upper())
-    return f"{raw[:4]}-{raw[4:]}" if len(raw) == 8 else raw
 
 
 def now_iso() -> str:
@@ -379,7 +357,6 @@ def create_example(data: dict, status: str = config.DEFAULT_STATUS, is_demo: boo
         "status": status,
         "reviewer_notes": None,
         "is_demo": 1 if is_demo else 0,
-        "edit_code": new_edit_code(),
     })
     columns = [column for column in COLUMNS if column != "id"]
     placeholders = ", ".join("?" for _ in columns)
@@ -412,17 +389,6 @@ def get_example_by_id(example_id: int, include_unapproved: bool = False) -> dict
     return _row_to_dict(row) or None
 
 
-def get_example_by_edit_code(code: str | None) -> dict | None:
-    """Fetch the record that owns an edit code, whatever its status."""
-    wanted = normalize_edit_code(code)
-    if len(wanted) != 9:
-        return None
-    with cursor() as cur:
-        cur.execute(_sql("SELECT * FROM examples WHERE edit_code = ?"), [wanted])
-        row = cur.fetchone()
-    return _row_to_dict(row) or None
-
-
 _ORDER_BY = {
     "newest": "submission_date DESC, id DESC",
     "oldest": "submission_date ASC, id ASC",
@@ -432,13 +398,22 @@ _ORDER_BY = {
 }
 
 
-def list_examples(status: str | None = "approved", sort: str = "newest", limit: int | None = None) -> list[dict]:
-    """Simple listing, optionally restricted to one status (None = every status)."""
+def _status_clause(status: Filter) -> tuple[str, list[str]]:
+    """'status IN (?, ?)' for one status or a list of them; empty when None."""
+    values = _as_list(status)
+    if not values:
+        return "", []
+    return "status IN (" + ", ".join("?" for _ in values) + ")", values
+
+
+def list_examples(status: Filter = "approved", sort: str = "newest", limit: int | None = None) -> list[dict]:
+    """Simple listing, optionally restricted to one or more statuses (None = every status)."""
     statement = "SELECT * FROM examples"
     params: list[Any] = []
-    if status:
-        statement += " WHERE status = ?"
-        params.append(status)
+    clause, values = _status_clause(status)
+    if clause:
+        statement += " WHERE " + clause
+        params.extend(values)
     statement += " ORDER BY " + _ORDER_BY.get(sort, _ORDER_BY["newest"])
     if limit:
         statement += " LIMIT ?"
@@ -486,7 +461,7 @@ def find_examples(
     content: Filter = None,
     context: Filter = None,
     level: str | None = None,
-    status: str | None = "approved",
+    status: Filter = "approved",
     sort: str = "newest",
     limit: int | None = None,
     offset: int = 0,
@@ -504,9 +479,10 @@ def find_examples(
     where: list[str] = []
     params: list[Any] = []
 
-    if status:
-        where.append("status = ?")
-        params.append(status)
+    clause, values = _status_clause(status)
+    if clause:
+        where.append(clause)
+        params.extend(values)
     if level:
         where.append("level = ?")
         params.append(level)
@@ -580,10 +556,11 @@ def _relevance(row: dict, query: str) -> int:
     return score
 
 
-def get_filter_options(status: str | None = "approved") -> dict[str, list]:
+def get_filter_options(status: Filter = "approved") -> dict[str, list]:
     """Distinct values used to populate the Browse filters."""
-    where = " WHERE status = ?" if status else ""
-    params = [status] if status else []
+    clause, values = _status_clause(status)
+    where = (" WHERE " + clause) if clause else ""
+    params: list[Any] = list(values)
     options: dict[str, list] = {}
     with cursor() as cur:
         for column in ("category", "technology", "country"):
@@ -660,6 +637,18 @@ def archive_example(example_id: int, reviewer_notes: str | None = None) -> None:
 def restore_example(example_id: int) -> None:
     """Send a rejected or archived record back to the review queue."""
     update_status(example_id, "pending")
+
+
+def send_back_for_review(example_id: int, note: str | None = None) -> None:
+    """Return a record to the queue, keeping earlier reviewer notes."""
+    with cursor(commit=True) as cur:
+        cur.execute(_sql("SELECT reviewer_notes FROM examples WHERE id = ?"), [example_id])
+        existing = (_row_to_dict(cur.fetchone()).get("reviewer_notes") or "").strip()
+        combined = "\n".join(part for part in (existing, clean_text(note) or "") if part) or None
+        cur.execute(
+            _sql("UPDATE examples SET status = 'pending', reviewer_notes = ?, updated_date = ? WHERE id = ?"),
+            [combined, now_iso(), example_id],
+        )
 
 
 def set_reviewer_notes(example_id: int, reviewer_notes: str | None) -> None:

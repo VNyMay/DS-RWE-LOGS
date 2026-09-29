@@ -28,13 +28,11 @@ def _save(data: dict) -> None:
     except (database.DatabaseError, ValueError) as exc:
         messages.database_error(exc)
         return
-    saved = database.get_example_by_id(new_id, include_unapproved=True) or {}
     st.session_state["last_submission"] = {
         "id": new_id,
         "title": validation.clean_text(data.get("title")),
         "submitted_by": validation.clean_text(data.get("submitted_by")),
         "level": validation.clean_choice(data.get("level")),
-        "edit_code": saved.get("edit_code"),
     }
     cache.invalidate()
     st.session_state.pop("submit_pending_data", None)
@@ -46,7 +44,7 @@ def _save(data: dict) -> None:
 # ---------------------------------------------------------------- confirmation
 
 last = st.session_state.get("last_submission")
-if last:
+if last and st.session_state.get("student_edit_id") is None:  # an edit request wins over a stale confirmation
     with st.container(border=True, key="section-submit-done"):
         ui.kicker("Submitted")
         st.html(
@@ -54,10 +52,6 @@ if last:
             f'<p class="dsc-subtitle">"{ui.esc(last["title"])}" is pending review and will appear once approved.</p>'
             f'<div style="margin-top:12px">{ui.status_badge_html("pending")}{ui.level_badge_html(last.get("level") or "SL")}</div>'
         )
-        if last.get("edit_code"):
-            st.html('<p class="dsc-kicker" style="margin-top:16px">Your edit code</p>')
-            st.code(last["edit_code"], language=None)
-            ui.note("Keep it. Enter it on this page to change the case while it is pending.")
         st.markdown("")
         b1, b2, _ = st.columns([2, 2, 4])
         with b1:
@@ -70,49 +64,36 @@ if last:
                 navigation.go(navigation.PAGE_BROWSE)
     st.stop()
 
-# ---------------------------------------------------------------- edit a pending submission
+# ---------------------------------------------------------------- edit an existing case (class code)
 
 flash = st.session_state.pop("submit_flash", None)
 if flash:
     messages.success(flash)
 
 edit_id = st.session_state.get("student_edit_id")
-if edit_id is None:
-    with st.expander("Already submitted? Edit it with your code"):
-        c1, c2 = st.columns([3, 1])
-        with c1:
-            typed_code = st.text_input("Edit code", key="student_edit_code", placeholder="K7PQ-3XMZ", label_visibility="collapsed")
-        with c2:
-            load = st.button("Load", key="student_edit_load", width="stretch")
-        if load:
-            try:
-                record = database.get_example_by_edit_code(typed_code)
-            except database.DatabaseError as exc:
-                messages.database_error(exc)
-                record = None
-            if record is None:
-                messages.error("No submission matches that code.")
-            elif record["status"] != "pending":
-                messages.info("This case has already been reviewed. Ask the admin for changes.")
-            else:
-                st.session_state["student_edit_id"] = record["id"]
-                st.rerun()
-else:
+if edit_id is not None:
+    if not navigation.can_edit():
+        st.session_state.pop("student_edit_id", None)
+        messages.info("Enter the class code in the sidebar to edit cases.")
+        st.stop()
     try:
         editing = database.get_example_by_id(edit_id, include_unapproved=True)
     except database.DatabaseError as exc:
         messages.database_error(exc)
         editing = None
-    if editing is None or editing["status"] != "pending":
+    if editing is None or (editing["status"] not in ("approved", "pending") and not navigation.is_admin()):
         st.session_state.pop("student_edit_id", None)
         messages.info("This case can no longer be edited.")
         st.stop()
+    was_published = editing["status"] == "approved"
     with st.container(border=True, key="section-student-edit"):
         ui.kicker("Editing")
         st.html(f'<h2 class="dsc-section-title" style="font-size:22px">{ui.esc(editing["title"])}</h2>')
+        if was_published:
+            ui.note("This case is published. Saving sends it back for review.")
         if st.button("Cancel", icon=":material/close:", type="tertiary", key="student_edit_cancel"):
             st.session_state.pop("student_edit_id", None)
-            st.rerun()
+            navigation.open_example(edit_id)
     changes = forms.example_form(initial=editing, key=f"student-edit-{edit_id}", submit_label="Save changes", wizard=False)
     if changes is not None:
         try:
@@ -125,9 +106,15 @@ else:
         else:
             try:
                 database.update_example(edit_id, changes)
+                if was_published and not navigation.is_admin():
+                    database.send_back_for_review(edit_id, "Edited by a contributor after approval. Please re-check.")
                 cache.invalidate()
                 st.session_state.pop("student_edit_id", None)
-                st.session_state["submit_flash"] = f'Saved "{validation.clean_text(changes["title"])}". It stays pending until a moderator approves it.'
+                title = validation.clean_text(changes["title"])
+                if was_published and not navigation.is_admin():
+                    st.session_state["submit_flash"] = f'Saved "{title}". It is back in the review queue.'
+                else:
+                    st.session_state["submit_flash"] = f'Saved "{title}".'
                 st.rerun()
             except (database.DatabaseError, ValueError) as exc:
                 messages.database_error(exc)
