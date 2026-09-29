@@ -1,0 +1,5 @@
+streamlit>=1.54
+pandas>=2.2
+# Altair ships with Streamlit and is used for the analytics charts.
+# Optional, only needed when DATABASE_URL points at PostgreSQL/Supabase:
+# psycopg[binary]>=3.2

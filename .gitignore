@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Secrets and private configuration
+.env
+.streamlit/secrets.toml
+
+# Local database and exports
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/*.csv
+
+# Temporary files
+*.tmp
+*.log
+~$*
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

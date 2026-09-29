@@ -1,0 +1,57 @@
+# Digital Society Casebook - Streamlit theme.
+# The palette follows the Secure_Lan / EXVIN design language: deep greens,
+# a gold accent, soft green-tinted surfaces. Streamlit picks [theme.light]
+# or [theme.dark] from the user's system or the Settings menu.
+
+[theme]
+base = "dark"
+font = "'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif"
+headingFont = "'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif"
+codeFont = "'Cascadia Mono', ui-monospace, Consolas, monospace"
+baseRadius = "12px"
+buttonRadius = "12px"
+showWidgetBorder = true
+showSidebarBorder = true
+chartCategoricalColors = ["#00946e", "#f1a001", "#4fd8b0", "#ffd27a", "#8fa69b"]
+chartSequentialColors = ["#11261e", "#00523f", "#027554", "#00946e", "#4fd8b0"]
+
+[theme.dark]
+primaryColor = "#00946e"
+backgroundColor = "#06110d"
+secondaryBackgroundColor = "#0a1914"
+textColor = "#eef5f1"
+linkColor = "#4fd8b0"
+borderColor = "#1d3a2f"
+dataframeBorderColor = "#1d3a2f"
+codeBackgroundColor = "#11261e"
+
+[theme.dark.sidebar]
+backgroundColor = "#0a1914"
+secondaryBackgroundColor = "#11261e"
+borderColor = "#1d3a2f"
+
+[theme.light]
+primaryColor = "#027554"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f4f7f5"
+textColor = "#0c1f18"
+linkColor = "#027554"
+borderColor = "#cfdbd5"
+dataframeBorderColor = "#cfdbd5"
+codeBackgroundColor = "#e9efec"
+
+[theme.light.sidebar]
+backgroundColor = "#f4f7f5"
+secondaryBackgroundColor = "#e9efec"
+borderColor = "#cfdbd5"
+
+[server]
+headless = true
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+showErrorDetails = "none"
+toolbarMode = "minimal"
