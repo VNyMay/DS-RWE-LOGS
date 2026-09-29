@@ -103,7 +103,24 @@ def _step_analysis(v: dict) -> dict:
         out["hl_challenge"] = None
         out["intervention"] = v.get("intervention") or ""
 
-    with st.expander("More detail (optional)", expanded=bool(v.get("_expand_more"))):
+    _more_fields = (
+        "positive_impacts", "ethical_concerns", "security_issues", "legal_issues", "stakeholders",
+        "subcategory", "negative_impacts", "privacy_issues", "environmental_impact", "conclusion",
+        "city", "tags",
+    )
+    # Stay open across a Back/Next round trip whenever it already holds
+    # something, so filled-in detail never looks like it vanished.
+    already_has_detail = any(v.get(field) for field in _more_fields)
+    start_open = bool(v.get("_expand_more")) or already_has_detail
+    # st.expander has no `key` parameter in this Streamlit version, and once a
+    # user has toggled it, it keeps its own open/closed state client-side and
+    # ignores `expanded=` on a later rerun of the same widget identity (a
+    # keyless widget's identity comes from its label). A label that differs
+    # by an invisible character when the wanted state differs forces
+    # Streamlit to treat it as a fresh widget, so a filled-in section really
+    # does reopen after Back/Next instead of only looking collapsed.
+    label = "More detail (optional)" + ("​" if start_open else "")
+    with st.expander(label, expanded=start_open):
         a, b = st.columns(2)
         with a:
             out["positive_impacts"] = st.text_area("Positive impacts", value=v.get("positive_impacts") or "", height=90)

@@ -39,8 +39,9 @@ def example_card(
             meta.append(f"<span>📍 <strong>{ui.esc(location)}</strong></span>")
         if example.get("year"):
             meta.append(f"<span>📅 <strong>{ui.esc(example['year'])}</strong></span>")
-        source_count = 1 + len(database.split_list(example.get("additional_sources")))
-        meta.append(f"<span>🔗 {source_count} source{'s' if source_count != 1 else ''}</span>")
+        source_count = (1 if example.get("source_url") else 0) + len(database.split_list(example.get("additional_sources")))
+        if source_count:
+            meta.append(f"<span>🔗 {source_count} source{'s' if source_count != 1 else ''}</span>")
         if example.get("submitted_by"):
             meta.append(f"<span>✍️ {ui.esc(example['submitted_by'])}</span>")
 

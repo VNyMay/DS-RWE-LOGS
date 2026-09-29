@@ -127,13 +127,13 @@ def record_row(example: dict, key_prefix: str) -> None:
             pills.append(ui.badge_html(example["technology"], "tech"))
         if example.get("is_demo"):
             pills.append(ui.badge_html("Demo record", "demo"))
-        source_ok = validation.is_valid_url(example.get("source_url"))
         meta = [
-            f"<span>✍️ <strong>{ui.esc(example.get('submitted_by'))}</strong></span>",
+            f"<span>✍️ <strong>{ui.esc(example.get('submitted_by') or 'Anonymous')}</strong></span>",
             f"<span>🗓️ {ui.esc(ui.format_date(example.get('submission_date'), with_time=True))}</span>",
             f"<span>#{example_id}</span>",
-            "<span>🔗 Source looks valid</span>" if source_ok else "<span>⚠️ Source URL invalid</span>",
         ]
+        if not validation.is_valid_url(example.get("source_url")):
+            meta.append("<span>No source – add one before approving</span>")
         st.html(
             f'<div>{"".join(pills)}</div>'
             f'<h3 class="dsc-card-title">{ui.esc(example.get("title"))}</h3>'
