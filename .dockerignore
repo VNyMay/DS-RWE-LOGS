@@ -1,0 +1,22 @@
+# Never bake secrets or local data into the image.
+.streamlit/secrets.toml
+data/
+.env
+
+# Version control and editor files.
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Python cruft.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Tests and docs aren't needed at runtime.
+tests/
+requirements-dev.txt
+README.md
