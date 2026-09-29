@@ -1,7 +1,11 @@
-"""The structured example form, shared by the Submit page and the admin editor.
+"""The example form, in two layouts that share the same fields.
 
-The form keeps its values across reruns, so a validation error never wipes
-what the person typed.
+* ``wizard=True`` (Submit page): three short steps with a progress bar, so
+  adding a case never feels like a long questionnaire. Values are kept in
+  session state while moving between steps.
+* ``wizard=False`` (admin editor): every step on one page with one save button.
+
+Required text boxes accept a single dash as "skip" (see validation.py).
 """
 
 from __future__ import annotations
@@ -12,253 +16,188 @@ import config
 import database
 import ui
 
-REQUIRED = ' <span class="dsc-required">*</span>'
+STEP_LABELS = ["The case", "Analysis", "Source and name"]
 
 
-def _label(text: str, required: bool = False) -> str:
-    # Streamlit labels accept limited markdown; the asterisk is added as text.
-    return f"{text} *" if required else text
+def _req(text: str) -> str:
+    return f"{text} *"
 
 
-def _section(title: str, subtitle: str | None, key: str):
-    container = st.container(border=True, key=f"section-form-{key}")
-    with container:
-        ui.section_heading(title, subtitle)
-    return container
+def _list(values: dict, field: str, allowed: list[str]) -> list[str]:
+    return [item for item in database.split_list(values.get(field)) if item in allowed]
 
 
-def example_form(initial: dict | None = None, key: str = "submit", submit_label: str = "Submit example") -> dict | None:
-    """Render the form. Returns the entered values when the submit button is pressed, else None."""
-    values = dict(initial or {})
-    issues_initial = database.split_list(values.get("ethical_issues"))
-    issues_initial = [issue for issue in issues_initial if issue in config.ETHICAL_ISSUES]
+def _index(options: list[str], value: object) -> int | None:
+    return options.index(value) if value in options else None
 
-    level_options = [config.NOT_SPECIFIED] + config.LEVELS
-    level_index = level_options.index(values["level"]) if values.get("level") in config.LEVELS else 0
-    category_options = [config.NOT_SPECIFIED] + config.CATEGORIES
-    category_index = category_options.index(values["category"]) if values.get("category") in config.CATEGORIES else 0
 
-    with st.form(key=f"form-{key}", border=False, clear_on_submit=False):
-        # ---------------------------------------------------- 1. basics
-        with _section("1. Basics", None, f"{key}-basics"):
-            title = st.text_input(
-                _label("Title", True),
-                value=values.get("title") or "",
-                placeholder="Facial recognition at international airports",
-                help="A specific, descriptive title. Name the technology and the setting.",
-                max_chars=config.MAX_TITLE_LENGTH,
+# ---------------------------------------------------------------- step 1: the case
+
+def _step_case(v: dict) -> dict:
+    out: dict = {}
+    out["title"] = st.text_input(_req("Title"), value=v.get("title") or "", placeholder="Facial recognition at international airports", max_chars=config.MAX_TITLE_LENGTH)
+    out["summary"] = st.text_area(_req("Short summary"), value=v.get("summary") or "", placeholder="One or two sentences: the technology, the situation, why it matters.", height=80)
+
+    left, right = st.columns(2)
+    with left:
+        out["level"] = st.segmented_control(
+            _req("Course level"), options=config.LEVELS,
+            default=v.get("level") if v.get("level") in config.LEVELS else None,
+            format_func=lambda x: f"{x} · {config.LEVEL_LABELS[x]}", width="stretch",
+        )
+        out["category"] = st.selectbox(_req("Category"), options=config.CATEGORIES, index=_index(config.CATEGORIES, v.get("category")), placeholder="Choose a category")
+        out["technology"] = st.text_input(_req("Technology"), value=v.get("technology") or "", placeholder="Facial recognition")
+    with right:
+        out["country"] = st.text_input("Country or location", value=v.get("country") or "", placeholder="United Kingdom")
+        out["year"] = st.number_input("Year", min_value=config.YEAR_MIN, max_value=config.YEAR_MAX, value=int(v["year"]) if v.get("year") else None, step=1, format="%d", placeholder="2023")
+        out["organizations"] = st.text_input("Organizations involved", value=v.get("organizations") or "", placeholder="Airport authority, technology vendor")
+    return out
+
+
+# ---------------------------------------------------------------- step 2: analysis
+
+def _step_analysis(v: dict) -> dict:
+    out: dict = {}
+    out["description"] = st.text_area(_req("What happened?"), value=v.get("description") or "", placeholder="Who used the technology, where, how, and what followed.", height=150)
+
+    ui.kicker("3Cs")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        out["concepts"] = st.multiselect("Concepts", options=config.CONCEPTS, default=_list(v, "concepts", config.CONCEPTS), placeholder="Choose")
+    with c2:
+        out["content_strands"] = st.multiselect("Content", options=config.CONTENT_STRANDS, default=_list(v, "content_strands", config.CONTENT_STRANDS), placeholder="Choose")
+    with c3:
+        out["contexts"] = st.multiselect("Contexts", options=config.CONTEXTS, default=_list(v, "contexts", config.CONTEXTS), placeholder="Choose")
+
+    left, right = st.columns(2)
+    with left:
+        out["ethical_issues"] = st.multiselect("Ethical issues", options=config.ETHICAL_ISSUES, default=_list(v, "ethical_issues", config.ETHICAL_ISSUES), placeholder="Choose")
+    with right:
+        out["affected_groups"] = st.text_input("Affected groups", value=v.get("affected_groups") or "", placeholder="Travellers, minority communities")
+
+    if v.get("level") == "HL":
+        ui.kicker("HL extension")
+        h1, h2 = st.columns([1, 2])
+        with h1:
+            out["hl_challenge"] = st.selectbox("Challenge", options=config.HL_CHALLENGES, index=_index(config.HL_CHALLENGES, v.get("hl_challenge")), placeholder="Choose a challenge")
+        with h2:
+            out["intervention"] = st.text_area("Intervention", value=v.get("intervention") or "", placeholder="What was done about it, and did it work?", height=80)
+    else:
+        out["hl_challenge"] = None
+        out["intervention"] = v.get("intervention") or ""
+
+    with st.expander("More detail (optional)", expanded=bool(v.get("_expand_more"))):
+        a, b = st.columns(2)
+        with a:
+            out["positive_impacts"] = st.text_area("Positive impacts", value=v.get("positive_impacts") or "", height=90)
+            out["ethical_concerns"] = st.text_area("Ethical concerns", value=v.get("ethical_concerns") or "", placeholder="Privacy, fairness, autonomy, surveillance, bias, responsibility...", height=90)
+            out["security_issues"] = st.text_area("Security issues", value=v.get("security_issues") or "", height=80)
+            out["legal_issues"] = st.text_area("Legal or regulatory issues", value=v.get("legal_issues") or "", height=80)
+            out["stakeholders"] = st.text_input("Stakeholders", value=v.get("stakeholders") or "", placeholder="Passengers, border officers, regulators")
+            out["subcategory"] = st.text_input("Subcategory", value=v.get("subcategory") or "", placeholder="Biometric identification")
+        with b:
+            out["negative_impacts"] = st.text_area("Negative impacts", value=v.get("negative_impacts") or "", height=90)
+            out["privacy_issues"] = st.text_area("Privacy issues", value=v.get("privacy_issues") or "", height=90)
+            out["environmental_impact"] = st.text_area("Environmental impact", value=v.get("environmental_impact") or "", height=80)
+            out["conclusion"] = st.text_area("Conclusion", value=v.get("conclusion") or "", placeholder="Weigh benefits against harms.", height=80)
+            out["city"] = st.text_input("City or region", value=v.get("city") or "", placeholder="London")
+            out["tags"] = st.text_input("Tags", value=v.get("tags") or "", placeholder="biometrics, travel")
+    return out
+
+
+# ---------------------------------------------------------------- step 3: source and name
+
+def _step_sources(v: dict) -> dict:
+    out: dict = {}
+    out["source_url"] = st.text_input(_req("Main source URL"), value=v.get("source_url") or "", placeholder="https://example.com/article", help="Type - to skip. A moderator adds a source before approval.")
+    out["additional_sources"] = st.text_area("More sources", value=v.get("additional_sources") or "", placeholder="One per line", height=70)
+    out["submitted_by"] = st.text_input(_req("Your name or nickname"), value=v.get("submitted_by") or "", placeholder="Name or nickname", help="Shown next to the case. Type - to stay anonymous.")
+    return out
+
+
+STEPS = [_step_case, _step_analysis, _step_sources]
+
+
+def _footnote() -> None:
+    st.html('<p class="dsc-note"><span class="dsc-required">*</span> required. Type <strong>-</strong> in a required text box to skip it.</p>')
+
+
+def _step_problems(step: int, values: dict) -> list[str]:
+    """Light checks before moving on, so mistakes surface on the step they belong to."""
+    problems: list[str] = []
+    if step == 0:
+        title = (values.get("title") or "").strip()
+        if not title or title == config.SKIP_MARK:
+            problems.append("Please enter a title.")
+        if not values.get("level"):
+            problems.append("Please choose SL or HL.")
+        if not values.get("category"):
+            problems.append("Please choose a category.")
+    return problems
+
+
+# ---------------------------------------------------------------- public entry point
+
+def example_form(initial: dict | None = None, key: str = "submit", submit_label: str = "Submit example", wizard: bool = True) -> dict | None:
+    """Render the form. Returns every field when the final button is pressed, else None."""
+    if not wizard:
+        return _full_form(initial or {}, key, submit_label)
+
+    state_key = f"wiz-{key}"
+    state = st.session_state.setdefault(state_key, {"step": 0, "draft": dict(initial or {})})
+    step, draft = state["step"], state["draft"]
+    last = len(STEPS) - 1
+
+    ui.stepper(STEP_LABELS, step)
+    problems = state.pop("problems", None)
+    if problems:
+        st.error("\n".join(f"- {text}" for text in problems), icon="⛔")
+
+    with st.form(key=f"form-{key}-{step}", border=True):
+        values = STEPS[step](draft)
+        _footnote()
+        back_col, next_col = st.columns([1, 3])
+        with back_col:
+            back = st.form_submit_button("Back", disabled=step == 0, width="stretch", icon=":material/arrow_back:")
+        with next_col:
+            forward = st.form_submit_button(
+                submit_label if step == last else "Next",
+                type="primary", width="stretch",
+                icon=":material/send:" if step == last else ":material/arrow_forward:",
             )
-            summary = st.text_area(
-                _label("Short summary", True),
-                value=values.get("summary") or "",
-                placeholder="Briefly explain the technology, situation, and why this example matters.",
-                help="One or two sentences. This appears on the example card.",
-                height=90,
-            )
-            left, right = st.columns(2)
-            with left:
-                technology = st.text_input(
-                    _label("Technology or digital system", True),
-                    value=values.get("technology") or "",
-                    placeholder="Facial recognition",
-                    help="The system at the centre of the case: an app, an algorithm, a device, a platform.",
-                )
-                category = st.selectbox(
-                    _label("Main category", True),
-                    options=category_options,
-                    index=category_index,
-                    help="Choose the Digital Society topic that fits best. Use tags for extra themes.",
-                )
-                level = st.selectbox(
-                    _label("Course level", True),
-                    options=level_options,
-                    index=level_index,
-                    format_func=lambda option: option if option == config.NOT_SPECIFIED else f"{option} - {config.LEVEL_LABELS[option]}",
-                    help="SL: " + config.LEVEL_HELP["SL"] + " HL: " + config.LEVEL_HELP["HL"],
-                )
-                subcategory = st.text_input(
-                    "Subcategory",
-                    value=values.get("subcategory") or "",
-                    placeholder="Biometric identification",
-                    help="Optional. A more specific theme inside the main category.",
-                )
-            with right:
-                country = st.text_input(
-                    "Country or location",
-                    value=values.get("country") or "",
-                    placeholder="Lebanon",
-                    help="Where the case took place. Use 'Global' for worldwide cases.",
-                )
-                city = st.text_input(
-                    "City or region",
-                    value=values.get("city") or "",
-                    placeholder="Beirut",
-                    help="Optional.",
-                )
-                year = st.number_input(
-                    "Year",
-                    min_value=config.YEAR_MIN,
-                    max_value=config.YEAR_MAX,
-                    value=int(values["year"]) if values.get("year") else None,
-                    step=1,
-                    format="%d",
-                    placeholder="2023",
-                    help="Optional. The year the case happened or became public.",
-                )
 
-        # ---------------------------------------------------- 2. description
-        with _section("2. The case", None, f"{key}-story"):
-            description = st.text_area(
-                _label("What happened?", True),
-                value=values.get("description") or "",
-                placeholder="Describe what happened, who was involved, where it happened, and how the digital system was used.",
-                help=f"At least {config.MIN_DESCRIPTION_LENGTH} characters. Facts first, analysis later.",
-                height=190,
-            )
-            left, right = st.columns(2)
-            with left:
-                organizations = st.text_input(
-                    "Organizations involved",
-                    value=values.get("organizations") or "",
-                    placeholder="Airport authority, technology vendor, national police",
-                    help="Companies, governments, schools or institutions.",
-                )
-                stakeholders = st.text_input(
-                    "Stakeholders",
-                    value=values.get("stakeholders") or "",
-                    placeholder="Passengers, border officers, regulators, civil-liberties groups",
-                    help="Everyone with an interest in the outcome.",
-                )
-            with right:
-                affected_groups = st.text_input(
-                    "Affected groups",
-                    value=values.get("affected_groups") or "",
-                    placeholder="Travellers, minority communities",
-                    help="Who felt the effects most directly.",
-                )
-                ethical_issues = st.multiselect(
-                    "Ethical issues (select all that apply)",
-                    options=config.ETHICAL_ISSUES,
-                    default=issues_initial,
-                    help="Used for filtering and analytics. Explain them in the 'Ethical concerns' box below.",
-                )
+    if back:
+        draft.update(values)
+        state["step"] = step - 1
+        st.rerun()
 
-        # ---------------------------------------------------- 3. analysis
-        with _section("3. Impacts and analysis", "Optional. Include benefits as well as harms.", f"{key}-analysis"):
-            left, right = st.columns(2)
-            with left:
-                positive_impacts = st.text_area(
-                    "Positive impacts",
-                    value=values.get("positive_impacts") or "",
-                    placeholder="Faster boarding, fewer identity errors, lower staffing costs...",
-                    height=120,
-                )
-                ethical_concerns = st.text_area(
-                    "Ethical concerns",
-                    value=values.get("ethical_concerns") or "",
-                    placeholder="Explain concerns related to privacy, fairness, autonomy, surveillance, bias, or responsibility.",
-                    height=140,
-                )
-                security_issues = st.text_area(
-                    "Security issues",
-                    value=values.get("security_issues") or "",
-                    placeholder="Data breaches, spoofing, misuse of stored templates...",
-                    height=110,
-                )
-                legal_issues = st.text_area(
-                    "Legal or regulatory issues",
-                    value=values.get("legal_issues") or "",
-                    placeholder="Data-protection law, court cases, government guidance...",
-                    height=110,
-                )
-            with right:
-                negative_impacts = st.text_area(
-                    "Negative impacts",
-                    value=values.get("negative_impacts") or "",
-                    placeholder="False matches, discrimination, chilling effects on travel...",
-                    height=120,
-                )
-                privacy_issues = st.text_area(
-                    "Privacy issues",
-                    value=values.get("privacy_issues") or "",
-                    placeholder="What data was collected, who could see it, how long it was kept...",
-                    height=140,
-                )
-                environmental_impact = st.text_area(
-                    "Environmental impact",
-                    value=values.get("environmental_impact") or "",
-                    placeholder="Energy use, hardware waste, or 'no notable impact'...",
-                    height=110,
-                )
-                conclusion = st.text_area(
-                    "Conclusion or overall Digital Society analysis",
-                    value=values.get("conclusion") or "",
-                    placeholder="Weigh the benefits against the harms and say what this case shows about technology and society.",
-                    height=110,
-                )
+    if forward:
+        draft.update(values)
+        if step < last:
+            found = _step_problems(step, draft)
+            if found:
+                state["problems"] = found
+            else:
+                state["step"] = step + 1
+            st.rerun()
+        return dict(draft)
+    return None
 
-        # ---------------------------------------------------- 4. sources
-        with _section("4. Sources and your name", None, f"{key}-sources"):
-            source_url = st.text_input(
-                _label("Main source URL", True),
-                value=values.get("source_url") or "",
-                placeholder="https://example.com/article",
-                help="A news article, report, court document or official page. Must start with https:// or http://.",
-            )
-            additional_sources = st.text_area(
-                "Additional sources",
-                value=values.get("additional_sources") or "",
-                placeholder="One source per line: https://...\nhttps://...",
-                help="Optional. One per line. Books or reports without a link are accepted too.",
-                height=90,
-            )
-            left, right = st.columns(2)
-            with left:
-                submitted_by = st.text_input(
-                    _label("Your name or nickname", True),
-                    value=values.get("submitted_by") or "",
-                    placeholder="Radwan",
-                    help="Shown publicly as the contributor of this example.",
-                )
-            with right:
-                tags = st.text_input(
-                    "Tags",
-                    value=values.get("tags") or "",
-                    placeholder="biometrics, travel, border control",
-                    help="Optional. Comma-separated keywords that help searching.",
-                )
 
-        st.html('<p class="dsc-note"><span class="dsc-required">*</span> required</p>')
-        submitted = st.form_submit_button(submit_label, type="primary", icon=":material/send:", width="stretch")
+def _full_form(values: dict, key: str, submit_label: str) -> dict | None:
+    merged: dict = dict(values)
+    merged["_expand_more"] = True
+    with st.form(key=f"form-{key}", border=False):
+        for label, render in zip(STEP_LABELS, STEPS):
+            with st.container(border=True, key=f"section-form-{key}-{label.replace(' ', '-')}"):
+                ui.section_heading(label)
+                merged.update(render(merged))
+        _footnote()
+        submitted = st.form_submit_button(submit_label, type="primary", icon=":material/save:", width="stretch")
+    merged.pop("_expand_more", None)
+    return merged if submitted else None
 
-    if not submitted:
-        return None
 
-    return {
-        "title": title,
-        "summary": summary,
-        "technology": technology,
-        "category": category,
-        "subcategory": subcategory,
-        "level": level,
-        "country": country,
-        "city": city,
-        "year": year,
-        "organizations": organizations,
-        "stakeholders": stakeholders,
-        "affected_groups": affected_groups,
-        "ethical_issues": ethical_issues,
-        "description": description,
-        "positive_impacts": positive_impacts,
-        "negative_impacts": negative_impacts,
-        "ethical_concerns": ethical_concerns,
-        "privacy_issues": privacy_issues,
-        "security_issues": security_issues,
-        "environmental_impact": environmental_impact,
-        "legal_issues": legal_issues,
-        "conclusion": conclusion,
-        "source_url": source_url,
-        "additional_sources": additional_sources,
-        "submitted_by": submitted_by,
-        "tags": tags,
-    }
+def reset_wizard(key: str) -> None:
+    """Forget a wizard's draft (used after a successful submission)."""
+    st.session_state.pop(f"wiz-{key}", None)

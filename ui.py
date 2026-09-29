@@ -37,17 +37,17 @@ _TOKENS = {
         "gold-on": "#1a1200",
     },
     "light": {
-        "base": "#ffffff", "panel": "#f4f7f5", "raised": "#e9efec", "hover": "#dfe8e3",
-        "line": "rgba(0, 82, 63, 0.12)", "line-strong": "rgba(0, 82, 63, 0.24)",
-        "text": "#0c1f18", "muted": "#56695f", "link": "#027554",
-        "glow": "rgba(0, 148, 110, 0.12)",
-        "shadow-sm": "0 1px 2px rgba(0,40,30,.06), 0 2px 8px rgba(0,40,30,.04)",
-        "shadow-md": "0 14px 32px -14px rgba(0,50,38,.25), 0 4px 10px -4px rgba(0,50,38,.08)",
-        "shadow-lg": "0 34px 70px -24px rgba(0,50,38,.34), 0 14px 28px -14px rgba(0,50,38,.14)",
-        "amber-bg": "rgba(241, 160, 1, 0.18)", "amber-fg": "#7a5200",
-        "green-bg": "rgba(2, 117, 84, 0.14)", "green-fg": "#00523f",
-        "red-bg": "rgba(229, 72, 77, 0.14)", "red-fg": "#a3191e",
-        "gray-bg": "rgba(86, 105, 95, 0.14)", "gray-fg": "#3f4f47",
+        "base": "#ffffff", "panel": "#ffffff", "raised": "#f1f6f3", "hover": "#e4eee8",
+        "line": "#e1eae5", "line-strong": "#c9d9d1",
+        "text": "#0c1f18", "muted": "#5b6d64", "link": "#027554",
+        "glow": "rgba(2, 117, 84, 0.08)",
+        "shadow-sm": "0 1px 2px rgba(0,40,30,.05), 0 2px 8px rgba(0,40,30,.04)",
+        "shadow-md": "0 14px 32px -14px rgba(0,50,38,.22), 0 4px 10px -4px rgba(0,50,38,.06)",
+        "shadow-lg": "0 34px 70px -24px rgba(0,50,38,.28), 0 14px 28px -14px rgba(0,50,38,.10)",
+        "amber-bg": "#fff1d6", "amber-fg": "#7a5200",
+        "green-bg": "#e3f2ec", "green-fg": "#00523f",
+        "red-bg": "#fde4e5", "red-fg": "#a3191e",
+        "gray-bg": "#eceff0", "gray-fg": "#3f4f47",
         "gold-on": "#1a1200",
     },
 }
@@ -61,12 +61,11 @@ _COMMON = {
 
 
 def theme_type() -> str:
-    """'dark' or 'light', following the active Streamlit theme."""
+    """'light' or 'dark', following the active Streamlit theme (the app ships light only)."""
     try:
-        kind = st.context.theme.type
-        return "light" if kind == "light" else "dark"
-    except Exception:  # noqa: BLE001 - very old Streamlit or bare mode
-        return "dark"
+        return "dark" if st.context.theme.type == "dark" else "light"
+    except Exception:  # noqa: BLE001 - bare mode
+        return "light"
 
 
 def _css_variables() -> str:
@@ -78,15 +77,11 @@ _CSS = """
 /* ---------- layout ---------- */
 [data-testid="stMainBlockContainer"] { padding-top: 3.6rem; padding-bottom: 5rem; max-width: 1180px; }
 @media (max-width: 720px) { [data-testid="stMainBlockContainer"] { padding-left: 16px; padding-right: 16px; } }
-[data-testid="stAppViewContainer"] {
-    background: radial-gradient(700px circle at 85% -10%, var(--dsc-glow), transparent 55%), var(--dsc-base);
-}
-[data-testid="stSidebar"] {
-    background: radial-gradient(420px circle at 0% 0%, var(--dsc-glow), transparent 60%), var(--dsc-panel);
-}
-[data-testid="stSidebar"] [data-testid="stSidebarNav"] a { border-radius: var(--dsc-radius-small); transition: transform .45s var(--dsc-ease), background-color .45s var(--dsc-ease); }
-[data-testid="stSidebar"] [data-testid="stSidebarNav"] a:hover { transform: translateX(3px); }
-[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[aria-current="page"] { box-shadow: inset 3px 0 0 var(--dsc-gold); }
+[data-testid="stAppViewContainer"] { background: var(--dsc-base); }
+[data-testid="stSidebar"] { background: var(--dsc-panel); }
+[data-testid="stSidebar"] [data-testid="stSidebarNav"] a { border-radius: var(--dsc-radius-small); }
+[data-testid="stSidebar"] [data-testid="stSidebarNav"] a:hover { transform: translateX(3px); transition: transform .45s var(--dsc-ease); }
+[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[aria-current="page"] { box-shadow: inset 3px 0 0 var(--dsc-green); }
 [data-testid="stSidebar"] [data-testid="stSidebarNavSeparator"] { display: none; }
 [data-testid="stSidebar"] [data-testid="stNavSectionHeader"] {
     color: var(--dsc-muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
@@ -94,20 +89,36 @@ _CSS = """
 h1, h2, h3 { letter-spacing: -0.01em; }
 a { text-decoration: none; }
 a:hover { text-decoration: underline; }
-:focus-visible { outline: 2px solid var(--dsc-gold); outline-offset: 2px; }
+/* No focus rings: the app relies on colour changes instead of outlines. */
+*:focus, *:focus-visible { outline: none !important; }
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible { box-shadow: none !important; }
 
 /* ---------- buttons ---------- */
-.stButton > button, .stDownloadButton > button, .stFormSubmitButton > button, [data-testid="stLinkButton"] a {
-    font-weight: 600; transition: transform .45s var(--dsc-ease), box-shadow .45s var(--dsc-ease), background-color .45s var(--dsc-ease), border-color .45s var(--dsc-ease);
-}
-.stButton > button:hover:not(:disabled), .stDownloadButton > button:hover:not(:disabled), .stFormSubmitButton > button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--dsc-shadow-md); }
+.stButton > button, .stDownloadButton > button, .stFormSubmitButton > button, [data-testid="stLinkButton"] a { font-weight: 600; }
+.stButton > button:hover:not(:disabled), .stDownloadButton > button:hover:not(:disabled), .stFormSubmitButton > button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--dsc-shadow-md); transition: transform .45s var(--dsc-ease), box-shadow .45s var(--dsc-ease); }
 .stButton > button:active:not(:disabled), .stFormSubmitButton > button:active:not(:disabled) { transform: translateY(0) scale(.97); transition-duration: .2s; }
 .stButton > button[kind="primary"]:hover:not(:disabled), .stFormSubmitButton > button[kind="primary"]:hover:not(:disabled) { box-shadow: var(--dsc-shadow-md), 0 8px 24px -8px rgba(0,148,110,.6); }
+
+/* ---------- widgets ---------- */
+[data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] > div, .stNumberInput [data-baseweb="input"] {
+    background: #ffffff !important;
+}
+[data-baseweb="input"]:hover, [data-baseweb="textarea"]:hover, [data-baseweb="select"] > div:hover { border-color: var(--dsc-green-bright) !important; }
+[data-baseweb="input"]:focus-within, [data-baseweb="textarea"]:focus-within, [data-baseweb="select"] > div:focus-within {
+    border-color: var(--dsc-green) !important; box-shadow: none !important;
+}
+[data-baseweb="input"] input:focus, [data-baseweb="textarea"] textarea:focus, [data-baseweb="select"] input:focus { outline: none !important; box-shadow: none !important; }
+[data-testid="stWidgetLabel"] p { font-weight: 600; font-size: 13.5px; }
+[data-testid="stExpander"] details { border-radius: var(--dsc-radius-small); }
+.stTabs [data-baseweb="tab-list"] { gap: 6px; }
+.stTabs [data-baseweb="tab"] { font-weight: 600; }
+[data-testid="stSegmentedControl"] button, [data-testid="stPills"] button { font-weight: 600; }
+[data-testid="stSidebar"] .stButton > button { background: #ffffff; }
+.stButton > button[kind="secondary"], .stDownloadButton > button, .stFormSubmitButton > button[kind="secondary"] { background: #ffffff; }
 
 /* ---------- bordered containers become cards ---------- */
 [data-testid="stVerticalBlockBorderWrapper"] {
     border-radius: var(--dsc-radius) !important; background: var(--dsc-panel);
-    transition: transform .45s var(--dsc-ease), box-shadow .45s var(--dsc-ease), border-color .45s var(--dsc-ease);
 }
 [class*="st-key-card-"] > [data-testid="stVerticalBlockBorderWrapper"],
 [class*="st-key-card-"][data-testid="stVerticalBlockBorderWrapper"] {
@@ -116,6 +127,7 @@ a:hover { text-decoration: underline; }
 [class*="st-key-card-"]:hover > [data-testid="stVerticalBlockBorderWrapper"],
 [class*="st-key-card-"][data-testid="stVerticalBlockBorderWrapper"]:hover {
     transform: translateY(-3px); box-shadow: var(--dsc-shadow-md); border-color: var(--dsc-green-bright) !important;
+    transition: transform .45s var(--dsc-ease), box-shadow .45s var(--dsc-ease), border-color .45s var(--dsc-ease);
 }
 [class*="st-key-section-"] > [data-testid="stVerticalBlockBorderWrapper"],
 [class*="st-key-section-"][data-testid="stVerticalBlockBorderWrapper"] { background: var(--dsc-panel); }
@@ -131,19 +143,18 @@ a:hover { text-decoration: underline; }
 .dsc-hero {
     position: relative; overflow: hidden; margin-bottom: 8px; padding: 40px 40px 36px;
     border: 1px solid var(--dsc-line-strong); border-radius: var(--dsc-radius-large);
-    background: radial-gradient(520px circle at 100% 0%, var(--dsc-glow), transparent 60%), var(--dsc-panel);
-    box-shadow: var(--dsc-shadow-md);
+    background: var(--dsc-panel);
+    box-shadow: var(--dsc-shadow-sm);
 }
-.dsc-hero::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, var(--dsc-green-bright), var(--dsc-gold)); }
+.dsc-hero::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, var(--dsc-green-deep), var(--dsc-green-bright)); }
 .dsc-hero .dsc-title { font-size: 40px; }
 @media (max-width: 720px) { .dsc-hero { padding: 28px 22px; } .dsc-hero .dsc-title { font-size: 30px; } }
 
 .dsc-metric {
     padding: 18px 20px; border: 1px solid var(--dsc-line); border-radius: var(--dsc-radius);
-    background: var(--dsc-panel); box-shadow: var(--dsc-shadow-sm);
-    transition: transform .45s var(--dsc-ease), box-shadow .45s var(--dsc-ease), border-color .45s var(--dsc-ease);
+    background: var(--dsc-panel);
 }
-.dsc-metric:hover { transform: translateY(-2px); box-shadow: var(--dsc-shadow-md); border-color: var(--dsc-green-bright); }
+.dsc-metric:hover { transform: translateY(-2px); box-shadow: var(--dsc-shadow-md); border-color: var(--dsc-green-bright); transition: transform .45s var(--dsc-ease), box-shadow .45s var(--dsc-ease), border-color .45s var(--dsc-ease); }
 .dsc-metric-label { margin: 0; color: var(--dsc-muted); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .dsc-metric-value { margin: 6px 0 0; font-size: 32px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: var(--dsc-text); }
 .dsc-metric-hint { margin: 6px 0 0; color: var(--dsc-muted); font-size: 13px; }
@@ -155,13 +166,13 @@ a:hover { text-decoration: underline; }
 }
 .dsc-badge-tech { background: transparent; border-color: var(--dsc-line-strong); color: var(--dsc-text); }
 .dsc-badge-muted { background: var(--dsc-gray-bg); color: var(--dsc-gray-fg); }
-.dsc-badge-demo { background: var(--dsc-amber-bg); color: var(--dsc-amber-fg); }
+.dsc-badge-demo { background: var(--dsc-gray-bg); color: var(--dsc-gray-fg); }
 .dsc-badge-pending { background: var(--dsc-amber-bg); color: var(--dsc-amber-fg); }
 .dsc-badge-approved { background: var(--dsc-green-bg); color: var(--dsc-green-fg); }
 .dsc-badge-rejected { background: var(--dsc-red-bg); color: var(--dsc-red-fg); }
 .dsc-badge-archived { background: var(--dsc-gray-bg); color: var(--dsc-gray-fg); }
-.dsc-badge-level { background: linear-gradient(135deg, var(--dsc-green-deep), var(--dsc-green-bright)); color: #ffffff; letter-spacing: .04em; }
-.dsc-badge-level-hl { background: linear-gradient(135deg, #7a5200, var(--dsc-gold)); color: var(--dsc-gold-on); }
+.dsc-badge-level { background: var(--dsc-green-bg); color: var(--dsc-green-fg); border-color: var(--dsc-green); letter-spacing: .04em; }
+.dsc-badge-level-hl { background: linear-gradient(135deg, var(--dsc-green-deep), var(--dsc-green)); color: #ffffff; border-color: transparent; }
 .dsc-badge-issue { background: var(--dsc-raised); color: var(--dsc-muted); font-weight: 600; }
 
 .dsc-card-title { margin: 4px 0 6px; font-size: 17px; font-weight: 700; line-height: 1.3; letter-spacing: -0.01em; color: var(--dsc-text); }
@@ -174,7 +185,6 @@ a:hover { text-decoration: underline; }
 .dsc-empty {
     display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 12px 0; padding: 44px 24px;
     border: 1px dashed var(--dsc-line-strong); border-radius: var(--dsc-radius); text-align: center;
-    animation: dsc-rise .7s var(--dsc-ease) both;
 }
 .dsc-empty-icon { font-size: 34px; line-height: 1; margin-bottom: 4px; filter: drop-shadow(0 8px 18px var(--dsc-glow)); }
 .dsc-empty h3 { margin: 0; font-size: 20px; letter-spacing: -0.01em; color: var(--dsc-text); }
@@ -207,6 +217,15 @@ a:hover { text-decoration: underline; }
     background: rgba(241,160,1,.10); color: var(--dsc-text); font-size: 14px; line-height: 1.5; }
 .dsc-note { color: var(--dsc-muted); font-size: 13px; }
 .dsc-required { color: var(--dsc-danger); font-weight: 700; }
+
+.dsc-stepper { display: flex; gap: 8px; margin: 4px 0 18px; }
+.dsc-step-pill { flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--dsc-line); border-radius: 999px; background: var(--dsc-panel); color: var(--dsc-muted); font-size: 13px; font-weight: 600; }
+.dsc-step-pill .n { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--dsc-line-strong); font-size: 12px; }
+.dsc-step-pill.is-current { border-color: var(--dsc-green); color: var(--dsc-text); box-shadow: 0 0 0 4px rgba(2,117,84,.10); }
+.dsc-step-pill.is-current .n { background: var(--dsc-green); border-color: var(--dsc-green); color: #fff; }
+.dsc-step-pill.is-done { color: var(--dsc-green-fg); background: var(--dsc-green-bg); border-color: transparent; }
+.dsc-step-pill.is-done .n { background: var(--dsc-green); border-color: var(--dsc-green); color: #fff; }
+@media (max-width: 720px) { .dsc-step-pill span.t { display: none; } .dsc-step-pill { justify-content: center; } }
 
 @keyframes dsc-rise { from { opacity: 0; transform: translateY(16px); } }
 @media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
@@ -265,7 +284,7 @@ def badge_html(text: str, kind: str = "category") -> str:
 
 def level_badge_html(level: str) -> str:
     """SL in green, HL in gold, so the two course levels are told apart at a glance."""
-    label = f"{level} \u00b7 {config.LEVEL_LABELS.get(level, level)}"
+    label = level
     extra = " dsc-badge-level-hl" if level == "HL" else ""
     return f'<span class="dsc-badge dsc-badge-level{extra}">{esc(label)}</span>'
 
@@ -351,6 +370,16 @@ def source_list(main_url: str | None, additional: list[str]) -> None:
         st.html("".join(parts))
     else:
         st.html('<p class="dsc-none dsc-note">No sources recorded.</p>')
+
+
+def stepper(labels: list[str], current: int) -> None:
+    """Progress pills for a multi-step form. ``current`` is zero-based."""
+    parts = []
+    for index, label in enumerate(labels):
+        state = "is-done" if index < current else ("is-current" if index == current else "")
+        mark = "&#10003;" if index < current else str(index + 1)
+        parts.append(f'<div class="dsc-step-pill {state}"><span class="n">{mark}</span><span class="t">{esc(label)}</span></div>')
+    st.html('<div class="dsc-stepper">' + "".join(parts) + "</div>")
 
 
 def steps(items: list[tuple[str, str]]) -> None:

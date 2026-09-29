@@ -26,6 +26,9 @@ DEMO_SUBMITTER = "Demo data"
 DEMO_EXAMPLES: list[dict] = [
     {
         "title": "Facebook and Cambridge Analytica data scandal",
+        "concepts": ['Power', 'Identity', 'Values and ethics'],
+        "content_strands": ['Data', 'Media', 'Algorithms'],
+        "contexts": ['Political', 'Social'],
         "summary": "Personal data from tens of millions of Facebook users was harvested through a quiz app and used for political profiling without meaningful consent.",
         "technology": "Social media data harvesting",
         "category": "Privacy",
@@ -53,6 +56,9 @@ DEMO_EXAMPLES: list[dict] = [
     },
     {
         "title": "Equifax data breach exposes 147 million people",
+        "concepts": ['Systems', 'Power', 'Values and ethics'],
+        "content_strands": ['Data', 'Computers', 'Networks and the internet'],
+        "contexts": ['Economic', 'Social'],
         "summary": "Attackers exploited an unpatched web-application flaw at credit bureau Equifax and stole names, birth dates, social security numbers and more.",
         "technology": "Web application (Apache Struts) and credit databases",
         "category": "Cybersecurity",
@@ -80,6 +86,11 @@ DEMO_EXAMPLES: list[dict] = [
     },
     {
         "title": "Clearview AI scrapes billions of faces for police searches",
+        "hl_challenge": 'Governance and human rights',
+        "intervention": "Regulators in several countries ordered the company to delete residents' data and stop collection; some US states restricted police use of facial recognition.",
+        "concepts": ['Power', 'Identity', 'Space', 'Values and ethics'],
+        "content_strands": ['Artificial intelligence', 'Data'],
+        "contexts": ['Political', 'Social'],
         "summary": "A start-up built a facial-recognition search engine from billions of photos copied from social media without consent and sold access to law enforcement.",
         "technology": "Facial recognition and web scraping",
         "category": "Surveillance",
@@ -107,6 +118,11 @@ DEMO_EXAMPLES: list[dict] = [
     },
     {
         "title": "UK exam grading algorithm downgrades students in 2020",
+        "hl_challenge": 'Governance and human rights',
+        "intervention": 'The algorithm was withdrawn within days and grades reverted to teacher assessments; a review recommended human oversight for future automated decisions.',
+        "concepts": ['Systems', 'Power', 'Values and ethics'],
+        "content_strands": ['Algorithms', 'Data'],
+        "contexts": ['Social', 'Political'],
         "summary": "With exams cancelled during the pandemic, an algorithm standardised teacher-predicted grades and lowered many results, disproportionately at state schools.",
         "technology": "Statistical grading algorithm",
         "category": "Education technology",
@@ -134,6 +150,11 @@ DEMO_EXAMPLES: list[dict] = [
     },
     {
         "title": "Dutch childcare benefits scandal driven by a risk algorithm",
+        "hl_challenge": 'Governance and human rights',
+        "intervention": 'Compensation for affected families, a parliamentary inquiry, a fine from the data-protection authority and a new government algorithm register.',
+        "concepts": ['Power', 'Systems', 'Identity', 'Values and ethics'],
+        "content_strands": ['Algorithms', 'Artificial intelligence', 'Data'],
+        "contexts": ['Political', 'Economic', 'Social'],
         "summary": "A tax-authority fraud-detection system wrongly flagged tens of thousands of families as fraudsters, with nationality used as a risk indicator.",
         "technology": "Automated fraud-risk scoring",
         "category": "Artificial intelligence",
@@ -161,6 +182,9 @@ DEMO_EXAMPLES: list[dict] = [
     },
     {
         "title": "M-Pesa brings mobile money to millions in Kenya",
+        "concepts": ['Change', 'Space', 'Systems'],
+        "content_strands": ['Networks and the internet', 'Data'],
+        "contexts": ['Economic', 'Social'],
         "summary": "A phone-based payment service let people without bank accounts send, receive and save money, transforming financial inclusion in East Africa.",
         "technology": "Mobile money platform (SMS and USSD based)",
         "category": "Financial technology",
@@ -188,6 +212,9 @@ DEMO_EXAMPLES: list[dict] = [
     },
     {
         "title": "TraceTogether contact-tracing data used by police in Singapore",
+        "concepts": ['Power', 'Space', 'Values and ethics'],
+        "content_strands": ['Data', 'Networks and the internet'],
+        "contexts": ['Health', 'Political'],
         "summary": "A pandemic contact-tracing app promised data would only be used for public health, but the government later confirmed police could access it for criminal investigations.",
         "technology": "Bluetooth contact-tracing app and token",
         "category": "Healthcare technology",
@@ -215,6 +242,11 @@ DEMO_EXAMPLES: list[dict] = [
     },
     {
         "title": "Aadhaar: the world's largest biometric identity system",
+        "hl_challenge": 'Global well-being',
+        "intervention": 'The Supreme Court limited mandatory use, and exception-handling rules were introduced so that people whose biometrics fail can still receive rations.',
+        "concepts": ['Identity', 'Power', 'Systems', 'Change'],
+        "content_strands": ['Data', 'Computers'],
+        "contexts": ['Political', 'Social', 'Economic'],
         "summary": "India issued over a billion residents a 12-digit ID linked to fingerprints and iris scans, enabling welfare delivery but raising exclusion and surveillance concerns.",
         "technology": "National biometric digital identity",
         "category": "Digital identity",

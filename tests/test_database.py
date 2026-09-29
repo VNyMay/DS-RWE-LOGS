@@ -22,7 +22,7 @@ def test_create_stores_pending_and_hides_from_visitors(example):
     assert database.get_example_by_id(new_id) is None  # visitors see approved only
     record = database.get_example_by_id(new_id, include_unapproved=True)
     assert record["status"] == "pending"
-    assert record["submitted_by"] == "Radwan"
+    assert record["submitted_by"] == "Test Contributor"
     assert record["ethical_issues"] == "Consent, Privacy"
     assert record["submission_date"] == record["updated_date"]
 
@@ -57,7 +57,7 @@ def test_search_and_combined_filters(example):
     rows, total = database.find_examples(query="AIRPORTS")
     assert total == 1 and rows[0]["id"] == first
 
-    rows, total = database.find_examples(category="Surveillance", country="lebanon", year_from=2020, year_to=2026, ethical_issue="Privacy", level="HL")
+    rows, total = database.find_examples(category="Surveillance", country="norway", year_from=2020, year_to=2026, ethical_issue="Privacy", level="HL")
     assert total == 1 and rows[0]["id"] == first
 
     rows, total = database.find_examples(ethical_issue="Consent and more")
@@ -127,5 +127,63 @@ def test_filter_options_only_use_approved(example):
     database.create_example(example, status="approved")
     database.create_example({**example, "country": "Hidden", "title": "Pending"})
     options = database.get_filter_options()
-    assert options["country"] == ["Lebanon"]
+    assert options["country"] == ["Norway"]
     assert options["year_range"] == [2023, 2023]
+
+
+def test_dash_fields_are_stored_as_null(example):
+    new_id = database.create_example({**example, "summary": "-", "source_url": "-", "submitted_by": "-"})
+    record = database.get_example_by_id(new_id, include_unapproved=True)
+    assert record["summary"] is None and record["source_url"] is None and record["submitted_by"] is None
+    assert record["title"] == example["title"]
+
+
+def test_three_cs_filters_and_statistics(example):
+    database.create_example({**example, "concepts": ["Power", "Identity"], "content_strands": ["Data"], "contexts": ["Political"]}, status="approved")
+    database.create_example({**example, "title": "Second case", "concepts": ["Change"], "content_strands": ["Media"], "contexts": ["Social"]}, status="approved")
+    assert database.find_examples(concept="Power")[1] == 1
+    assert database.find_examples(content="Media")[1] == 1
+    assert database.find_examples(context="Political", concept="Identity")[1] == 1
+    assert database.find_examples(context="Health")[1] == 0
+    stats = database.get_statistics()
+    assert ("Power", 1) in stats["by_concept"]
+    assert stats["by_content"][0][1] == 1
+    assert len(stats["by_context"]) == 2
+
+
+def test_old_database_is_rebuilt_without_not_null(tmp_path, monkeypatch):
+    import sqlite3
+    import config
+    path = tmp_path / "old.db"
+    monkeypatch.setattr(config, "DATABASE_PATH", path)
+    con = sqlite3.connect(path)
+    con.execute(
+        "CREATE TABLE examples (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, summary TEXT NOT NULL, "
+        "technology TEXT NOT NULL, category TEXT NOT NULL, description TEXT NOT NULL, source_url TEXT NOT NULL, "
+        "submitted_by TEXT NOT NULL, submission_date TEXT NOT NULL, updated_date TEXT NOT NULL, "
+        "status TEXT NOT NULL DEFAULT 'pending', is_demo INTEGER NOT NULL DEFAULT 0)"
+    )
+    con.execute(
+        "INSERT INTO examples (title, summary, technology, category, description, source_url, submitted_by, submission_date, updated_date, status) "
+        "VALUES ('Old case', 'S', 'T', 'Privacy', 'D', 'https://x.org', 'Who', '2025-01-01T00:00:00', '2025-01-01T00:00:00', 'approved')"
+    )
+    con.commit()
+    con.close()
+    database.initialize_database()
+    database.initialize_database()
+    record = database.get_example_by_id(1)
+    assert record["title"] == "Old case" and record["level"] == "SL" and record["concepts"] is None
+    new_id = database.create_example({"title": "New without summary", "summary": "-", "category": "Privacy", "level": "HL"})
+    assert database.get_example_by_id(new_id, include_unapproved=True)["summary"] is None
+
+
+def test_filters_accept_several_values_and_free_text(example):
+    database.create_example(example, status="approved")  # Surveillance / Norway / Facial recognition
+    database.create_example({**example, "title": "Second", "category": "Privacy", "country": "Kenya", "technology": "Mobile money", "concepts": ["Change"]}, status="approved")
+    database.create_example({**example, "title": "Third", "category": "Cybersecurity", "country": "India", "concepts": ["Power"]}, status="approved")
+    assert database.find_examples(category=["Privacy", "Cybersecurity"])[1] == 2
+    assert database.find_examples(country=["kenya", "INDIA"])[1] == 2          # typed, any case
+    assert database.find_examples(category=["Privacy"], country=["India"])[1] == 0  # AND across filters
+    assert database.find_examples(concept=["Change", "Power"])[1] == 2
+    assert database.find_examples(technology="mobile money")[1] == 1
+    assert database.find_examples(category=[])[1] == 3

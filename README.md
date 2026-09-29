@@ -10,10 +10,11 @@ Built with Python and Streamlit. Local data lives in SQLite; the data layer is r
 
 - **Home** with headline metrics, recently added cases, popular categories, SL and HL sections, and a "how it works" guide.
 - **Browse** with keyword search across every descriptive field, independent filters (SL/HL, category, technology, country, year range, ethical issue), five sort orders including relevance, pagination, and a full detail page per case.
-- **Submit** with a four-section form (basics, description, impacts and analysis, sources and contributor), clear required-field marking, friendly validation, duplicate-title warnings, and a confirmation screen. Optional fields are stored as empty, never as "-".
+- **Submit** as a three-step guided form (the case, analysis, source and name) with the deeper analysis fields folded into an optional section, clear required-field marking, friendly validation, duplicate-title warnings, and a confirmation screen. Empty optional fields are stored as NULL. A required text field can be skipped by typing a single dash; the title is the only field that cannot be skipped, and a case without a source cannot be approved until a moderator adds one.
+- **3Cs tagging**: every case can be tagged with the seven Digital Society concepts (Change, Expression, Identity, Power, Space, Systems, Values and ethics), the content strands (Data, Algorithms, Computers, Networks and the internet, Media, Artificial intelligence) and the contexts (Cultural, Economic, Environmental, Health, Human knowledge, Political, Social). All three are filters on Browse and charts on Analytics. HL cases can also record an HL extension challenge (global well-being, governance and human rights, sustainable development) and the intervention that addressed it.
 - **Admin / Review** protected by a password from secrets: pending queue with search, approve / reject / edit / archive / restore / delete (with confirmation), private reviewer notes, an all-records view, CSV export (public export never includes reviewer notes), and a demo-data cleaner.
 - **Analytics** with charts by course level, year, category, ethical issue, technology and country, each with a table view, and an empty state when there is nothing to chart.
-- Dark and light themes following the Secure_Lan / EXVIN design language (deep greens, gold accent, lifted cards).
+- Clean white interface with a deep-green accent, adapted from the Secure_Lan / EXVIN design language.
 
 ## Project structure
 
@@ -31,17 +32,17 @@ digital-society-casebook/
 │   ├── forms.py            # the shared submission / edit form
 │   ├── messages.py         # success, warning, error and validation messages
 │   └── navigation.py       # page switching, admin session, query-string helpers
-├── pages/
-│   ├── 0_Home.py
-│   ├── 1_Browse_Examples.py
-│   ├── 2_Submit_Example.py
-│   ├── 3_Analytics.py
-│   └── 4_Admin.py
+├── screens/
+│   ├── home.py
+│   ├── browse.py
+│   ├── submit.py
+│   ├── analytics.py
+│   └── admin.py
 ├── assets/                 # logo and icon (SVG)
 ├── data/                   # examples.db is created here (git-ignored)
 ├── tests/                  # pytest suite for the database and validation layers
 ├── .streamlit/
-│   ├── config.toml         # theme (light and dark) and server settings
+│   ├── config.toml         # theme and server settings
 │   └── secrets.toml.example
 ├── requirements.txt
 └── requirements-dev.txt
@@ -106,7 +107,7 @@ Stop the app, delete `data/examples.db`, start the app again (or run `python see
 
 ## Add categories or ethical issues
 
-Edit the lists in `config.py` (`CATEGORIES`, `ETHICAL_ISSUES`). Existing records keep their values; the form, filters and analytics pick up the new entries automatically.
+Edit the lists in `config.py` (`CATEGORIES`, `ETHICAL_ISSUES`, `CONCEPTS`, `CONTENT_STRANDS`, `CONTEXTS`). Existing records keep their values; the form, filters and analytics pick up the new entries automatically.
 
 ## Tests
 

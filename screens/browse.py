@@ -1,4 +1,4 @@
-"""Browse: keyword search, independent filters, sorting, pagination and the detail view."""
+"""Browse: keyword search, multi-value filters, sorting, pagination and the detail view."""
 
 from __future__ import annotations
 
@@ -20,6 +20,10 @@ SORT_OPTIONS = {
     "Most relevant": "relevance",
     "Year, latest first": "year",
 }
+FILTER_KEYS = (
+    "browse_query", "browse_level", "browse_category", "browse_technology", "browse_country",
+    "browse_issue", "browse_concept", "browse_content", "browse_context", "browse_years", "browse_sort", "browse_status",
+)
 
 if not st.session_state.get("db_ready", True):
     ui.page_header("Browse examples", kicker="Explore")
@@ -43,11 +47,7 @@ if example_id is not None:
         st.rerun()
 
     if example is None:
-        ui.empty_state(
-            "Example not available",
-            "It may still be under review or was removed.",
-            icon="🔎",
-        )
+        ui.empty_state("Example not available", "It may still be under review or was removed.", icon="🔎")
         st.stop()
 
     render_example_detail(example, is_admin=is_admin)
@@ -66,7 +66,7 @@ ui.page_header("Browse examples", kicker="Explore")
 # Filters arriving from other pages (Home category buttons, SL/HL buttons).
 prefill = st.session_state.pop("browse_prefill", None)
 if prefill:
-    st.session_state["browse_category"] = prefill.get("category", ANY)
+    st.session_state["browse_category"] = [prefill["category"]] if prefill.get("category") else []
     st.session_state["browse_level"] = prefill.get("level", ANY)
     st.session_state["browse_page"] = 1
 
@@ -76,39 +76,54 @@ except database.DatabaseError as exc:
     messages.database_error(exc)
     st.stop()
 
+
+def clear_filters() -> None:
+    """Reset every filter widget. Runs as a button callback, before the widgets are drawn."""
+    for key in ("browse_category", "browse_technology", "browse_country", "browse_concept", "browse_content", "browse_context", "browse_issue"):
+        st.session_state[key] = []
+    st.session_state["browse_query"] = ""
+    st.session_state["browse_level"] = ANY
+    st.session_state["browse_sort"] = next(iter(SORT_OPTIONS))
+    st.session_state["browse_status"] = ANY
+    st.session_state.pop("browse_years", None)
+    st.session_state["browse_page"] = 1
+
+
+def picker(label: str, choices: list[str], key: str) -> list[str]:
+    """Pick several values or type new ones; typed values are matched case-insensitively."""
+    return st.multiselect(label, options=choices, key=key, accept_new_options=True, placeholder="Pick or type")
+
+
 with st.container(border=True, key="section-browse-filters"):
     top_left, top_right = st.columns([5, 2])
     with top_left:
-        query = st.text_input(
-            "Search",
-            key="browse_query",
-            placeholder="Search titles, summaries, technologies, countries, issues, tags...",
-            label_visibility="collapsed",
-        )
+        query = st.text_input("Search", key="browse_query", placeholder="Search anything...", label_visibility="collapsed")
     with top_right:
-        level_choice = st.segmented_control(
-            "Course level",
-            options=[ANY] + config.LEVELS,
-            key="browse_level",
-            default=ANY,
-            label_visibility="collapsed",
-            width="stretch",
-        )
+        st.session_state.setdefault("browse_level", ANY)
+        level_choice = st.segmented_control("Course level", options=[ANY] + config.LEVELS, key="browse_level", label_visibility="collapsed", width="stretch")
 
-    f1, f2, f3, f4 = st.columns(4)
+    f1, f2, f3 = st.columns(3)
     with f1:
-        category = st.selectbox("Category", [ANY] + config.CATEGORIES, key="browse_category")
+        category = picker("Category", config.CATEGORIES, "browse_category")
     with f2:
-        technology = st.selectbox("Technology", [ANY] + options["technology"], key="browse_technology")
+        technology = picker("Technology", options["technology"], "browse_technology")
     with f3:
-        country = st.selectbox("Country or location", [ANY] + options["country"], key="browse_country")
-    with f4:
-        ethical_issue = st.selectbox("Ethical issue", [ANY] + config.ETHICAL_ISSUES, key="browse_issue")
+        country = picker("Country or location", options["country"], "browse_country")
 
-    g1, g2, g3 = st.columns([3, 2, 2])
+    g1, g2, g3 = st.columns(3)
+    with g1:
+        concept = picker("Concepts", config.CONCEPTS, "browse_concept")
+    with g2:
+        content = picker("Content", config.CONTENT_STRANDS, "browse_content")
+    with g3:
+        context = picker("Contexts", config.CONTEXTS, "browse_context")
+
+    h1, h2, h3, h4 = st.columns([3, 3, 2, 2]) if is_admin else (*st.columns([3, 3, 2]), None)
+    with h1:
+        ethical_issue = picker("Ethical issues", config.ETHICAL_ISSUES, "browse_issue")
     lo, hi = options["year_range"]
     year_from = year_to = None
-    with g1:
+    with h2:
         if lo is not None and hi is not None:
             if lo == hi:
                 lo, hi = lo - 1, hi
@@ -116,32 +131,27 @@ with st.container(border=True, key="section-browse-filters"):
             if year_span != (int(lo), int(hi)):
                 year_from, year_to = year_span
         else:
-            st.slider("Year", min_value=config.YEAR_MIN, max_value=config.YEAR_MAX, value=(config.YEAR_MIN, config.YEAR_MAX), disabled=True, help="Available once examples with a year exist.")
-    with g2:
+            st.slider("Year", min_value=config.YEAR_MIN, max_value=config.YEAR_MAX, value=(config.YEAR_MIN, config.YEAR_MAX), disabled=True)
+    with h3:
         sort_label = st.selectbox("Sort by", list(SORT_OPTIONS), key="browse_sort")
-    with g3:
-        if is_admin:
-            status_choice = st.selectbox("Status (admin)", [ANY] + config.STATUSES, key="browse_status", format_func=lambda s: s if s == ANY else config.STATUS_LABELS[s])
-        else:
-            status_choice = "approved"
-            st.selectbox("Status", ["Approved"], disabled=True)
+    if is_admin:
+        with h4:
+            status_choice = st.selectbox("Status", [ANY] + config.STATUSES, key="browse_status", format_func=lambda s: s if s == ANY else config.STATUS_LABELS[s])
+    else:
+        status_choice = "approved"
 
     active = [
         label for label, value in (
-            ("search", query.strip()), ("level", level_choice != ANY and level_choice), ("category", category != ANY),
-            ("technology", technology != ANY), ("country", country != ANY), ("ethical issue", ethical_issue != ANY),
-            ("year", year_from is not None),
+            ("search", query.strip()), ("level", level_choice not in (ANY, None)), ("category", category),
+            ("technology", technology), ("country", country), ("concepts", concept), ("content", content),
+            ("contexts", context), ("ethical issues", ethical_issue), ("year", year_from is not None),
         ) if value
     ]
     c1, c2 = st.columns([6, 1])
     with c1:
         ui.note("Filters: " + ", ".join(active) if active else "Showing all examples.")
     with c2:
-        if st.button("Clear", key="browse_clear", disabled=not active, width="stretch"):
-            for key in ("browse_query", "browse_level", "browse_category", "browse_technology", "browse_country", "browse_issue", "browse_years", "browse_sort", "browse_status"):
-                st.session_state.pop(key, None)
-            st.session_state["browse_page"] = 1
-            st.rerun()
+        st.button("Clear", key="browse_clear", disabled=not active, width="stretch", on_click=clear_filters)
 
 # ---------------------------------------------------------------- results
 
@@ -150,7 +160,10 @@ if sort == "relevance" and not query.strip():
     sort = "newest"
 
 page = int(st.session_state.get("browse_page", 1))
-filter_signature = (query, level_choice, category, technology, country, ethical_issue, year_from, year_to, sort_label, status_choice)
+filter_signature = (
+    query, level_choice, tuple(category), tuple(technology), tuple(country), tuple(concept), tuple(content),
+    tuple(context), tuple(ethical_issue), year_from, year_to, sort_label, status_choice,
+)
 if st.session_state.get("browse_signature") != filter_signature:
     st.session_state["browse_signature"] = filter_signature
     page = 1
@@ -159,12 +172,15 @@ if st.session_state.get("browse_signature") != filter_signature:
 try:
     results, total = database.find_examples(
         query=query,
-        category=None if category == ANY else category,
-        technology=None if technology == ANY else technology,
-        country=None if country == ANY else country,
+        category=category,
+        technology=technology,
+        country=country,
         year_from=year_from,
         year_to=year_to,
-        ethical_issue=None if ethical_issue == ANY else ethical_issue,
+        ethical_issue=ethical_issue,
+        concept=concept,
+        content=content,
+        context=context,
         level=None if level_choice in (ANY, None) else level_choice,
         status=None if status_choice == ANY else status_choice,
         sort=sort,
@@ -183,17 +199,9 @@ if page > pages_total:
 st.markdown("")
 if total == 0:
     if active:
-        ui.empty_state(
-            "No examples match these filters",
-            "Try removing a filter or searching for a broader keyword.",
-            icon="🔍",
-        )
+        ui.empty_state("No examples match these filters", "Try removing a filter or searching for a broader keyword.", icon="🔍")
     else:
-        ui.empty_state(
-            "No examples yet",
-            "Submit the first sourced example.",
-            icon="📚",
-        )
+        ui.empty_state("No examples yet", "Submit the first sourced example.", icon="📚")
         if st.button("Submit an example", type="primary", icon=":material/add_circle:"):
             navigation.go(navigation.PAGE_SUBMIT)
 else:

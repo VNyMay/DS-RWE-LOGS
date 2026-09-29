@@ -3,7 +3,8 @@
 Run with:  streamlit run app.py
 
 This file sets up the page, the theme, the database and the navigation.
-Each screen lives in the ``pages`` folder.
+Each screen lives in the ``screens`` folder (not ``pages``, so Streamlit's
+folder-based routing stays off and only st.navigation is used).
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ st.set_page_config(
     },
 )
 
-logo = config.BASE_DIR / "assets" / ("logo-light.svg" if ui.theme_type() == "light" else "logo.svg")
+logo = config.BASE_DIR / "assets" / "logo.svg"
 st.logo(str(logo), icon_image=str(config.BASE_DIR / "assets" / "icon.svg"), size="large")
 
 ui.inject_styles()

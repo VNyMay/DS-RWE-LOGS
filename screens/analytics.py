@@ -121,14 +121,25 @@ with left:
             st.html(
                 '<div style="display:flex;height:10px;border-radius:999px;overflow:hidden;margin-top:6px;gap:2px">'
                 f'<div style="flex:{sl};background:{BAR_COLOR}" title="SL"></div>'
-                f'<div style="flex:{hl};background:#f1a001" title="HL"></div></div>'
+                f'<div style="flex:{hl};background:#00523f" title="HL"></div></div>'
                 f'<p class="dsc-note" style="margin-top:8px">SL {round(100 * sl / total)}% · HL {round(100 * hl / total)}%</p>'
             )
 with right:
     bar_block("By year", None, stats["by_year"], "Year", "year", horizontal=False)
 
+left, right = st.columns(2, gap="large")
+with left:
+    bar_block("By concept", None, stats["by_concept"], "Concept", "concept")
+with right:
+    bar_block("By content", None, stats["by_content"], "Content", "content")
+
+left, right = st.columns(2, gap="large")
+with left:
+    bar_block("By context", None, stats["by_context"], "Context", "context")
+with right:
+    bar_block("By ethical issue", "A case can raise several issues.", stats["by_ethical_issue"], "Ethical issue", "issue")
+
 bar_block("By category", None, stats["by_category"], "Category", "category")
-bar_block("By ethical issue", "A case can raise several issues.", stats["by_ethical_issue"], "Ethical issue", "issue")
 
 left, right = st.columns(2, gap="large")
 with left:

@@ -9,8 +9,8 @@
   <!-- open book -->
   <path d="M11 15.5c4-1.6 7.5-1.4 11 .8v16c-3.5-2.2-7-2.4-11-.8z" fill="#ffffff" fill-opacity="0.92"/>
   <path d="M33 15.5c-4-1.6-7.5-1.4-11 .8v16c3.5-2.2 7-2.4 11-.8z" fill="#ffffff" fill-opacity="0.72"/>
-  <!-- gold bookmark -->
-  <path d="M27.5 12h4v11l-2-1.6-2 1.6z" fill="#f1a001"/>
-  <text x="52" y="21" font-family="'Segoe UI Variable Display','Segoe UI',system-ui,sans-serif" font-size="15" font-weight="700" fill="#eef5f1" letter-spacing="-0.2">Digital Society</text>
-  <text x="52" y="38" font-family="'Segoe UI Variable Display','Segoe UI',system-ui,sans-serif" font-size="15" font-weight="700" fill="#f1a001" letter-spacing="-0.2">Casebook</text>
+  <!-- bookmark -->
+  <path d="M27.5 12h4v11l-2-1.6-2 1.6z" fill="#bfeedd"/>
+  <text x="52" y="21" font-family="'Segoe UI Variable Display','Segoe UI',system-ui,sans-serif" font-size="15" font-weight="700" fill="#0c1f18" letter-spacing="-0.2">Digital Society</text>
+  <text x="52" y="38" font-family="'Segoe UI Variable Display','Segoe UI',system-ui,sans-serif" font-size="15" font-weight="700" fill="#027554" letter-spacing="-0.2">Casebook</text>
 </svg>

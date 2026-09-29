@@ -52,6 +52,11 @@ COLUMNS: list[str] = [
     "negative_impacts",
     "ethical_concerns",
     "ethical_issues",
+    "concepts",
+    "content_strands",
+    "contexts",
+    "hl_challenge",
+    "intervention",
     "privacy_issues",
     "security_issues",
     "environmental_impact",
@@ -73,11 +78,16 @@ EDITABLE_FIELDS: list[str] = [
     "title", "summary", "technology", "category", "subcategory", "level", "country", "city", "year",
     "organizations", "stakeholders", "affected_groups", "description",
     "positive_impacts", "negative_impacts", "ethical_concerns", "ethical_issues",
-    "privacy_issues", "security_issues", "environmental_impact", "legal_issues", "conclusion",
+    "concepts", "content_strands", "contexts", "hl_challenge", "intervention", "privacy_issues", "security_issues", "environmental_impact", "legal_issues", "conclusion",
     "source_url", "additional_sources", "tags", "submitted_by",
 ]
 
-REQUIRED_TEXT_FIELDS = ["title", "summary", "technology", "category", "level", "description", "source_url", "submitted_by"]
+# The database insists only on these; the form marks more fields as required
+# but lets people skip them by typing a dash (see validation.py).
+REQUIRED_TEXT_FIELDS = ["title", "category", "level"]
+
+# Fields stored as comma-separated lists.
+LIST_FIELDS = ("ethical_issues", "concepts", "content_strands", "contexts", "tags")
 
 # Only these columns are private: they never leave the admin page.
 PRIVATE_FIELDS = ["reviewer_notes"]
@@ -97,6 +107,11 @@ SEARCH_FIELDS: list[tuple[str, int]] = [
     ("description", 1),
     ("ethical_concerns", 1),
     ("ethical_issues", 2),
+    ("concepts", 2),
+    ("content_strands", 2),
+    ("contexts", 2),
+    ("hl_challenge", 2),
+    ("intervention", 1),
     ("privacy_issues", 1),
     ("security_issues", 1),
 ]
@@ -105,8 +120,8 @@ _SCHEMA = """
 CREATE TABLE IF NOT EXISTS examples (
     id                   INTEGER PRIMARY KEY AUTOINCREMENT,
     title                TEXT    NOT NULL,
-    summary              TEXT    NOT NULL,
-    technology           TEXT    NOT NULL,
+    summary              TEXT,
+    technology           TEXT,
     category             TEXT    NOT NULL,
     subcategory          TEXT,
     level                TEXT    NOT NULL DEFAULT 'SL',
@@ -116,20 +131,25 @@ CREATE TABLE IF NOT EXISTS examples (
     organizations        TEXT,
     stakeholders         TEXT,
     affected_groups      TEXT,
-    description          TEXT    NOT NULL,
+    description          TEXT,
     positive_impacts     TEXT,
     negative_impacts     TEXT,
     ethical_concerns     TEXT,
     ethical_issues       TEXT,
+    concepts             TEXT,
+    content_strands      TEXT,
+    contexts             TEXT,
+    hl_challenge         TEXT,
+    intervention         TEXT,
     privacy_issues       TEXT,
     security_issues      TEXT,
     environmental_impact TEXT,
     legal_issues         TEXT,
     conclusion           TEXT,
-    source_url           TEXT    NOT NULL,
+    source_url           TEXT,
     additional_sources   TEXT,
     tags                 TEXT,
-    submitted_by         TEXT    NOT NULL,
+    submitted_by         TEXT,
     submission_date      TEXT    NOT NULL,
     updated_date         TEXT    NOT NULL,
     status               TEXT    NOT NULL DEFAULT 'pending',
@@ -150,7 +170,15 @@ _INDEXES = [
 # existing database. Order matters if one depends on another.
 _MIGRATIONS: list[tuple[str, str]] = [
     ("level", "ALTER TABLE examples ADD COLUMN level TEXT NOT NULL DEFAULT 'SL'"),
+    ("concepts", "ALTER TABLE examples ADD COLUMN concepts TEXT"),
+    ("content_strands", "ALTER TABLE examples ADD COLUMN content_strands TEXT"),
+    ("contexts", "ALTER TABLE examples ADD COLUMN contexts TEXT"),
+    ("hl_challenge", "ALTER TABLE examples ADD COLUMN hl_challenge TEXT"),
+    ("intervention", "ALTER TABLE examples ADD COLUMN intervention TEXT"),
 ]
+
+# Columns that used to be NOT NULL and may now be skipped with a dash.
+_RELAXED_COLUMNS = ("summary", "technology", "description", "source_url", "submitted_by")
 
 
 class DatabaseError(Exception):
@@ -240,8 +268,31 @@ def initialize_database() -> None:
         for column, statement in _MIGRATIONS:
             if column not in existing:
                 cur.execute(statement)
+        _relax_not_null(cur, schema)
         for statement in _INDEXES:
             cur.execute(statement)
+
+
+def _relax_not_null(cur: Any, schema: str) -> None:
+    """Older databases required summary, technology, description, source and name.
+
+    SQLite cannot drop a NOT NULL constraint in place, so the table is rebuilt
+    once; PostgreSQL gets a plain ALTER. Both are no-ops afterwards.
+    """
+    if _backend() == "postgres":
+        for column in _RELAXED_COLUMNS:
+            cur.execute(f"ALTER TABLE examples ALTER COLUMN {column} DROP NOT NULL")
+        return
+    cur.execute("PRAGMA table_info(examples)")
+    info = [_row_to_dict(row) for row in cur.fetchall()]
+    if not any(row["name"] in _RELAXED_COLUMNS and row["notnull"] for row in info):
+        return
+    old_columns = [row["name"] for row in info]
+    shared = ", ".join(column for column in COLUMNS if column in old_columns)
+    cur.execute("ALTER TABLE examples RENAME TO examples_old")
+    cur.execute(schema)
+    cur.execute(f"INSERT INTO examples ({shared}) SELECT {shared} FROM examples_old")
+    cur.execute("DROP TABLE examples_old")
 
 
 def _existing_columns(cur: Any) -> set[str]:
@@ -266,13 +317,13 @@ def _prepare(data: dict) -> dict:
         value = data.get(field)
         if field == "year":
             prepared[field] = parse_year(value)
-        elif field in ("ethical_issues", "tags"):
+        elif field in LIST_FIELDS:
             if isinstance(value, (list, tuple, set)):
                 items = [clean_text(item) for item in value]
             else:
                 items = [clean_text(item) for item in parse_source_list(value)]
             prepared[field] = ", ".join(sorted({item for item in items if item})) or None
-        elif field in ("category", "subcategory", "level"):
+        elif field in ("category", "subcategory", "level", "hl_challenge"):
             prepared[field] = clean_choice(value)
         elif field == "additional_sources":
             prepared[field] = "\n".join(parse_source_list(value)) or None
@@ -376,14 +427,28 @@ def get_recent_examples(limit: int = 6) -> list[dict]:
     return list_examples(status="approved", sort="updated", limit=limit)
 
 
+Filter = str | list[str] | tuple[str, ...] | None
+
+
+def _as_list(value: Filter) -> list[str]:
+    """Normalise a filter argument: None/'' -> [], 'x' -> ['x'], list -> cleaned list."""
+    if value is None:
+        return []
+    items = [value] if isinstance(value, str) else list(value)
+    return [str(item).strip() for item in items if str(item).strip()]
+
+
 def find_examples(
     query: str = "",
-    category: str | None = None,
-    technology: str | None = None,
-    country: str | None = None,
+    category: Filter = None,
+    technology: Filter = None,
+    country: Filter = None,
     year_from: int | None = None,
     year_to: int | None = None,
-    ethical_issue: str | None = None,
+    ethical_issue: Filter = None,
+    concept: Filter = None,
+    content: Filter = None,
+    context: Filter = None,
     level: str | None = None,
     status: str | None = "approved",
     sort: str = "newest",
@@ -391,6 +456,10 @@ def find_examples(
     offset: int = 0,
 ) -> tuple[list[dict], int]:
     """Keyword search plus independent filters.
+
+    Each filter takes one value or a list; several values in one filter match
+    any of them (OR), while different filters combine (AND). Matching is
+    case-insensitive so typed values work as well as picked ones.
 
     Returns ``(rows, total)`` where ``total`` is the number of matches before
     ``limit``/``offset`` are applied, for pagination. ``status=None`` means
@@ -402,29 +471,29 @@ def find_examples(
     if status:
         where.append("status = ?")
         params.append(status)
-    if category:
-        where.append("category = ?")
-        params.append(category)
     if level:
         where.append("level = ?")
         params.append(level)
-    if technology:
-        where.append("LOWER(technology) = LOWER(?)")
-        params.append(technology)
-    if country:
-        where.append("LOWER(country) = LOWER(?)")
-        params.append(country)
+    # Plain columns: any of the given values (case-insensitive).
+    for column, wanted in (("category", category), ("technology", technology), ("country", country)):
+        values = _as_list(wanted)
+        if values:
+            where.append("LOWER(COALESCE(" + column + ", '')) IN (" + ", ".join("LOWER(?)" for _ in values) + ")")
+            params.extend(values)
     if year_from is not None:
         where.append("year >= ?")
         params.append(int(year_from))
     if year_to is not None:
         where.append("year <= ?")
         params.append(int(year_to))
-    if ethical_issue:
-        # ethical_issues is stored as "A, B, C"; wrap in commas so "Privacy"
-        # cannot match "Privacy and consent".
-        where.append("(',' || REPLACE(COALESCE(ethical_issues, ''), ', ', ',') || ',') LIKE ?")
-        params.append(f"%,{ethical_issue},%")
+    # List columns are stored as "A, B, C"; wrapping in commas means "Privacy"
+    # cannot match "Privacy and consent".
+    for column, wanted in (("ethical_issues", ethical_issue), ("concepts", concept), ("content_strands", content), ("contexts", context)):
+        values = _as_list(wanted)
+        if values:
+            clause = f"LOWER(',' || REPLACE(COALESCE({column}, ''), ', ', ',') || ',') LIKE LOWER(?)"
+            where.append("(" + " OR ".join(clause for _ in values) + ")")
+            params.extend(f"%,{value},%" for value in values)
 
     query = (query or "").strip()
     if query:
@@ -625,12 +694,14 @@ def get_statistics() -> dict:
         stats["by_country"] = _count_by(cur, "country")
         stats["by_year"] = sorted(_count_by(cur, "year"), key=lambda pair: pair[0])
 
-        cur.execute("SELECT ethical_issues FROM examples WHERE status = 'approved'")
-        issue_counts: dict[str, int] = {}
-        for row in (_row_to_dict(x) for x in cur.fetchall()):
-            for issue in split_list(row.get("ethical_issues")):
-                issue_counts[issue] = issue_counts.get(issue, 0) + 1
-        stats["by_ethical_issue"] = sorted(issue_counts.items(), key=lambda pair: (-pair[1], pair[0]))
+        cur.execute("SELECT ethical_issues, concepts, content_strands, contexts FROM examples WHERE status = 'approved'")
+        rows = [_row_to_dict(x) for x in cur.fetchall()]
+        for column, key in (("ethical_issues", "by_ethical_issue"), ("concepts", "by_concept"), ("content_strands", "by_content"), ("contexts", "by_context")):
+            counts: dict[str, int] = {}
+            for row in rows:
+                for item in split_list(row.get(column)):
+                    counts[item] = counts.get(item, 0) + 1
+            stats[key] = sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))
 
         cur.execute("SELECT COUNT(*) AS n FROM examples WHERE status = 'approved' AND is_demo = 1")
         stats["demo_count"] = int(_row_to_dict(cur.fetchone())["n"])

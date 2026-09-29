@@ -67,6 +67,17 @@ ETHICAL_ISSUES: list[str] = [
     "Responsibility and liability",
 ]
 
+# The IB Digital Society "3Cs": concepts, content and contexts.
+CONCEPTS: list[str] = ["Change", "Expression", "Identity", "Power", "Space", "Systems", "Values and ethics"]
+CONTENT_STRANDS: list[str] = ["Data", "Algorithms", "Computers", "Networks and the internet", "Media", "Artificial intelligence", "Robots and autonomous technologies"]
+
+# HL extension: challenge topics. HL cases can also record an intervention.
+HL_CHALLENGES: list[str] = ["Global well-being", "Governance and human rights", "Sustainable development"]
+CONTEXTS: list[str] = ["Cultural", "Economic", "Environmental", "Health", "Human knowledge", "Political", "Social"]
+
+# Typing this alone in a required text box skips it (title excepted).
+SKIP_MARK = "-"
+
 # IB Digital Society course level a case is intended for.
 LEVELS: list[str] = ["SL", "HL"]
 LEVEL_LABELS: dict[str, str] = {

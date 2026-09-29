@@ -104,6 +104,10 @@ def validate_example(data: dict, similar_titles: list[str] | None = None) -> Val
     """
     result = ValidationResult()
 
+    def skipped(field: str) -> bool:
+        """True when the person typed only a dash: the field is deliberately left out."""
+        return str(data.get(field) or "").strip() == config.SKIP_MARK
+
     title = clean_text(data.get("title"))
     if not title:
         result.errors["title"] = "Please enter a title."
@@ -115,14 +119,16 @@ def validate_example(data: dict, similar_titles: list[str] | None = None) -> Val
         result.errors["title"] = f"Please shorten the title to {config.MAX_TITLE_LENGTH} characters or fewer."
 
     summary = clean_text(data.get("summary"))
-    if not summary:
+    if skipped("summary"):
+        pass
+    elif not summary:
         result.errors["summary"] = "Please enter a short summary."
     elif len(summary) < config.MIN_SUMMARY_LENGTH:
         result.errors["summary"] = (
             "Please write a fuller summary: one or two sentences explaining what the case is about."
         )
 
-    if not clean_text(data.get("technology")):
+    if not clean_text(data.get("technology")) and not skipped("technology"):
         result.errors["technology"] = "Please name the technology or digital system involved."
 
     category = clean_choice(data.get("category"))
@@ -138,7 +144,9 @@ def validate_example(data: dict, similar_titles: list[str] | None = None) -> Val
         result.errors["level"] = "Please choose SL or HL."
 
     description = clean_text(data.get("description"))
-    if not description:
+    if skipped("description"):
+        pass
+    elif not description:
         result.errors["description"] = "Please describe what happened."
     elif len(description) < config.MIN_DESCRIPTION_LENGTH:
         result.errors["description"] = (
@@ -146,12 +154,14 @@ def validate_example(data: dict, similar_titles: list[str] | None = None) -> Val
         )
 
     source_url = clean_text(data.get("source_url"))
-    if not source_url:
+    if skipped("source_url"):
+        pass
+    elif not source_url:
         result.errors["source_url"] = "Please provide a main source URL. Every case needs evidence."
     elif not is_valid_url(source_url):
         result.errors["source_url"] = "Please enter a valid URL beginning with https:// or http://."
 
-    if not clean_text(data.get("submitted_by")):
+    if not clean_text(data.get("submitted_by")) and not skipped("submitted_by"):
         result.errors["submitted_by"] = "Please enter your name or nickname."
 
     year = data.get("year")

@@ -14,7 +14,8 @@ def render_example_detail(example: dict, is_admin: bool = False, key_prefix: str
     pills = [ui.level_badge_html(example.get("level") or "SL"), ui.badge_html(example.get("category") or "", "category")]
     if example.get("subcategory"):
         pills.append(ui.badge_html(example["subcategory"], "muted"))
-    pills.append(ui.badge_html(example.get("technology") or "", "tech"))
+    if example.get("technology"):
+        pills.append(ui.badge_html(example["technology"], "tech"))
     if is_admin and example.get("status"):
         pills.append(ui.status_badge_html(example["status"]))
     if example.get("is_demo"):
@@ -45,6 +46,13 @@ def render_example_detail(example: dict, is_admin: bool = False, key_prefix: str
                     '<p class="dsc-kicker" style="margin-top:14px">Ethical issues</p>'
                     + "".join(ui.badge_html(issue, "issue") for issue in issues)
                 )
+            for label, field in (("Concepts", "concepts"), ("Content", "content_strands"), ("Contexts", "contexts")):
+                items = database.split_list(example.get(field))
+                if items:
+                    st.html(
+                        f'<p class="dsc-kicker" style="margin-top:10px">{label}</p>'
+                        + "".join(ui.badge_html(item, "category") for item in items)
+                    )
             tags = database.split_list(example.get("tags"))
             if tags:
                 st.html(
@@ -96,6 +104,13 @@ def render_example_detail(example: dict, is_admin: bool = False, key_prefix: str
                 ui.kicker("Issues and implications")
                 for title, body in issues:
                     ui.detail_section(title, body)
+
+        if example.get("hl_challenge") or example.get("intervention"):
+            with st.container(border=True, key=f"section-detail-hl{k}"):
+                ui.kicker("HL extension")
+                if example.get("hl_challenge"):
+                    st.html(ui.badge_html(example["hl_challenge"], "category"))
+                ui.detail_section("Intervention", example.get("intervention"))
 
         if example.get("conclusion"):
             with st.container(border=True, key=f"section-detail-conclusion{k}"):

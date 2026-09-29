@@ -53,3 +53,17 @@ def test_source_list_parsing():
         "https://a.com/1", "https://b.com/2", "https://c.com/3",
     ]
     assert validation.parse_source_list(None) == []
+
+
+def test_dash_skips_required_text_fields(example):
+    skipped = {**example, "summary": "-", "technology": "-", "description": " - ", "source_url": "-", "submitted_by": "-"}
+    assert validation.validate_example(skipped).ok
+
+
+def test_dash_does_not_skip_the_title(example):
+    assert "title" in validation.validate_example({**example, "title": "-"}).errors
+
+
+def test_skipped_source_blocks_approval():
+    ok, reason = validation.can_be_approved({"source_url": None})
+    assert not ok and "source" in reason.lower()

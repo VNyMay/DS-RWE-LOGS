@@ -116,8 +116,9 @@ def record_row(example: dict, key_prefix: str) -> None:
             ui.status_badge_html(status),
             ui.level_badge_html(example.get("level") or "SL"),
             ui.badge_html(example.get("category") or "", "category"),
-            ui.badge_html(example.get("technology") or "", "tech"),
         ]
+        if example.get("technology"):
+            pills.append(ui.badge_html(example["technology"], "tech"))
         if example.get("is_demo"):
             pills.append(ui.badge_html("Demo record", "demo"))
         source_ok = validation.is_valid_url(example.get("source_url"))
@@ -203,7 +204,7 @@ if edit_id is not None:
             if st.button("Cancel editing", icon=":material/close:", type="tertiary"):
                 st.session_state.pop("admin_edit_id", None)
                 st.rerun()
-        data = forms.example_form(initial=editing, key=f"edit-{edit_id}", submit_label="Save changes")
+        data = forms.example_form(initial=editing, key=f"edit-{edit_id}", submit_label="Save changes", wizard=False)
         if data is not None:
             try:
                 similar = database.find_similar_titles(data.get("title") or "", exclude_id=edit_id)

@@ -10,7 +10,7 @@ import ui
 import validation
 from components import forms, messages, navigation
 
-ui.page_header("Submit an example", "Reviewed before publishing.", kicker="Contribute")
+ui.page_header("Submit an example", "Reviewed before publishing. Type - to skip a required field.", kicker="Contribute")
 
 if not st.session_state.get("db_ready", True):
     messages.database_error()
@@ -35,6 +35,7 @@ def _save(data: dict) -> None:
         "level": validation.clean_choice(data.get("level")),
     }
     st.session_state.pop("submit_pending_data", None)
+    forms.reset_wizard(form_key)
     st.session_state["submit_form_version"] += 1
     st.rerun()
 
@@ -46,7 +47,7 @@ if last:
     with st.container(border=True, key="section-submit-done"):
         ui.kicker("Submitted")
         st.html(
-            f'<h2 class="dsc-section-title" style="font-size:24px">Thanks, {ui.esc(last["submitted_by"])}.</h2>'
+            f'<h2 class="dsc-section-title" style="font-size:24px">Thanks{", " + ui.esc(last["submitted_by"]) if last.get("submitted_by") else ""}.</h2>'
             f'<p class="dsc-subtitle">"{ui.esc(last["title"])}" is pending review and will appear once approved.</p>'
             f'<div style="margin-top:12px">{ui.status_badge_html("pending")}{ui.level_badge_html(last.get("level") or "SL")}</div>'
         )
@@ -64,7 +65,7 @@ if last:
 
 # ---------------------------------------------------------------- form
 
-data = forms.example_form(initial=None, key=form_key, submit_label="Submit for review")
+data = forms.example_form(initial=None, key=form_key, submit_label="Submit for review", wizard=True)
 
 # A submission with only warnings (for example a possible duplicate) waits
 # here for an explicit "submit anyway".
