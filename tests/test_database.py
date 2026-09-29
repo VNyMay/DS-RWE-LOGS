@@ -187,3 +187,33 @@ def test_filters_accept_several_values_and_free_text(example):
     assert database.find_examples(concept=["Change", "Power"])[1] == 2
     assert database.find_examples(technology="mobile money")[1] == 1
     assert database.find_examples(category=[])[1] == 3
+
+
+def test_edit_code_generated_and_looked_up(example):
+    new_id = database.create_example(example)
+    record = database.get_example_by_id(new_id, include_unapproved=True)
+    code = record["edit_code"]
+    assert code and len(code) == 9 and code[4] == "-"
+    assert database.get_example_by_edit_code(code)["id"] == new_id
+    assert database.get_example_by_edit_code(code.lower().replace("-", " "))["id"] == new_id  # forgiving input
+    assert database.get_example_by_edit_code("ZZZZ-ZZZZ") is None
+    assert database.get_example_by_edit_code("") is None
+    assert database.get_example_by_edit_code(None) is None
+
+
+def test_edit_code_survives_edits_and_is_private(example):
+    new_id = database.create_example(example)
+    code = database.get_example_by_id(new_id, include_unapproved=True)["edit_code"]
+    database.update_example(new_id, {**example, "title": "Edited by the student"})
+    assert database.get_example_by_edit_code(code)["title"] == "Edited by the student"
+    database.approve_example(new_id)
+    assert "edit_code" not in database.export_examples().columns
+    assert "edit_code" in database.export_examples(status=None, include_private=True).columns
+
+
+def test_edit_codes_are_unique(example):
+    codes = set()
+    for index in range(25):
+        new_id = database.create_example({**example, "title": f"Case number {index}"})
+        codes.add(database.get_example_by_id(new_id, include_unapproved=True)["edit_code"])
+    assert len(codes) == 25

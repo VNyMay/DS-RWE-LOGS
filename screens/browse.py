@@ -9,7 +9,7 @@ import streamlit as st
 import config
 import database
 import ui
-from components import cards, messages, navigation
+from components import cache, cards, messages, navigation
 from components.detail import render_example_detail
 
 ANY = "All"
@@ -71,7 +71,7 @@ if prefill:
     st.session_state["browse_page"] = 1
 
 try:
-    options = database.get_filter_options(status=None if is_admin else "approved")
+    options = cache.filter_options(None if is_admin else "approved")
 except database.DatabaseError as exc:
     messages.database_error(exc)
     st.stop()
@@ -170,7 +170,7 @@ if st.session_state.get("browse_signature") != filter_signature:
     st.session_state["browse_page"] = 1
 
 try:
-    results, total = database.find_examples(
+    results, total = cache.find(
         query=query,
         category=category,
         technology=technology,

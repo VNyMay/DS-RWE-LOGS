@@ -15,7 +15,7 @@ import streamlit as st
 import config
 import database
 import ui
-from components import messages, navigation
+from components import cache, messages, navigation
 
 DARK = ui.theme_type() == "dark"
 BAR_COLOR = "#00946e" if DARK else "#027554"
@@ -29,7 +29,7 @@ if not st.session_state.get("db_ready", True):
     st.stop()
 
 try:
-    stats = database.get_statistics()
+    stats = cache.statistics()
 except database.DatabaseError as exc:
     messages.database_error(exc)
     st.stop()

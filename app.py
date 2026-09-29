@@ -16,7 +16,7 @@ import streamlit as st
 import config
 import database
 import ui
-from components import navigation
+from components import cache, navigation
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -67,7 +67,7 @@ current = st.navigation(pages, position="sidebar")
 pending_count = None
 if navigation.is_admin() and st.session_state.get("db_ready"):
     try:
-        pending_count = database.count_examples("pending")
+        pending_count = cache.pending_count()
     except database.DatabaseError:
         pending_count = None
 navigation.sidebar_footer(pending_count)

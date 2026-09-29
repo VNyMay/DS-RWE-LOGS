@@ -7,7 +7,7 @@ import streamlit as st
 import config
 import database
 import ui
-from components import cards, messages, navigation
+from components import cache, cards, messages, navigation
 
 # ---------------------------------------------------------------- hero
 
@@ -33,10 +33,10 @@ if not st.session_state.get("db_ready", True):
     st.stop()
 
 try:
-    stats = database.get_statistics()
-    recent = database.get_recent_examples(limit=6)
-    latest_sl, _ = database.find_examples(level="SL", sort="updated", limit=3)
-    latest_hl, _ = database.find_examples(level="HL", sort="updated", limit=3)
+    stats = cache.statistics()
+    recent = cache.recent(6)
+    latest_sl, _ = cache.find(level="SL", sort="updated", limit=3)
+    latest_hl, _ = cache.find(level="HL", sort="updated", limit=3)
 except database.DatabaseError as exc:
     messages.database_error(exc)
     st.stop()

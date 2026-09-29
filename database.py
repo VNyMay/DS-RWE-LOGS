@@ -18,8 +18,10 @@ All queries are parameterised. Never build SQL from user text.
 from __future__ import annotations
 
 import logging
+import secrets
 import sqlite3
 from contextlib import contextmanager
+import re
 from datetime import datetime, timezone
 from typing import Any, Iterator
 
@@ -71,6 +73,7 @@ COLUMNS: list[str] = [
     "status",
     "reviewer_notes",
     "is_demo",
+    "edit_code",
 ]
 
 # Fields the user may edit. Everything else is managed by the application.
@@ -90,7 +93,7 @@ REQUIRED_TEXT_FIELDS = ["title", "category", "level"]
 LIST_FIELDS = ("ethical_issues", "concepts", "content_strands", "contexts", "tags")
 
 # Only these columns are private: they never leave the admin page.
-PRIVATE_FIELDS = ["reviewer_notes"]
+PRIVATE_FIELDS = ["reviewer_notes", "edit_code"]
 
 # Columns inspected by keyword search, with their weight for relevance sorting.
 SEARCH_FIELDS: list[tuple[str, int]] = [
@@ -154,7 +157,8 @@ CREATE TABLE IF NOT EXISTS examples (
     updated_date         TEXT    NOT NULL,
     status               TEXT    NOT NULL DEFAULT 'pending',
     reviewer_notes       TEXT,
-    is_demo              INTEGER NOT NULL DEFAULT 0
+    is_demo              INTEGER NOT NULL DEFAULT 0,
+    edit_code            TEXT
 )
 """
 
@@ -164,6 +168,7 @@ _INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_examples_country ON examples (country)",
     "CREATE INDEX IF NOT EXISTS idx_examples_year ON examples (year)",
     "CREATE INDEX IF NOT EXISTS idx_examples_level ON examples (level)",
+    "CREATE INDEX IF NOT EXISTS idx_examples_edit_code ON examples (edit_code)",
 ]
 
 # Columns added after the first release, with the SQL used to add them to an
@@ -175,6 +180,7 @@ _MIGRATIONS: list[tuple[str, str]] = [
     ("contexts", "ALTER TABLE examples ADD COLUMN contexts TEXT"),
     ("hl_challenge", "ALTER TABLE examples ADD COLUMN hl_challenge TEXT"),
     ("intervention", "ALTER TABLE examples ADD COLUMN intervention TEXT"),
+    ("edit_code", "ALTER TABLE examples ADD COLUMN edit_code TEXT"),
 ]
 
 # Columns that used to be NOT NULL and may now be skipped with a dash.
@@ -212,6 +218,8 @@ def get_connection():
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(str(config.DATABASE_PATH), timeout=10)
     connection.row_factory = sqlite3.Row
+    # Write-ahead logging lets readers keep going while a write is in progress.
+    connection.execute("PRAGMA journal_mode=WAL")
     return connection
 
 
@@ -248,6 +256,22 @@ def _row_to_dict(row: Any) -> dict:
     if isinstance(row, dict):
         return dict(row)
     return {key: row[key] for key in row.keys()}
+
+
+# Letters and digits that are hard to confuse with each other (no 0/O, 1/I).
+_EDIT_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def new_edit_code() -> str:
+    """A random code like 'K7PQ-3XMZ' that lets a contributor edit their pending case."""
+    raw = "".join(secrets.choice(_EDIT_CODE_ALPHABET) for _ in range(8))
+    return f"{raw[:4]}-{raw[4:]}"
+
+
+def normalize_edit_code(text: str | None) -> str:
+    """Upper-case, drop spaces and dashes, and re-insert the dash: 'k7pq 3xmz' -> 'K7PQ-3XMZ'."""
+    raw = re.sub(r"[^A-Z0-9]", "", (text or "").upper())
+    return f"{raw[:4]}-{raw[4:]}" if len(raw) == 8 else raw
 
 
 def now_iso() -> str:
@@ -355,6 +379,7 @@ def create_example(data: dict, status: str = config.DEFAULT_STATUS, is_demo: boo
         "status": status,
         "reviewer_notes": None,
         "is_demo": 1 if is_demo else 0,
+        "edit_code": new_edit_code(),
     })
     columns = [column for column in COLUMNS if column != "id"]
     placeholders = ", ".join("?" for _ in columns)
@@ -383,6 +408,17 @@ def get_example_by_id(example_id: int, include_unapproved: bool = False) -> dict
         params.append("approved")
     with cursor() as cur:
         cur.execute(_sql(statement), params)
+        row = cur.fetchone()
+    return _row_to_dict(row) or None
+
+
+def get_example_by_edit_code(code: str | None) -> dict | None:
+    """Fetch the record that owns an edit code, whatever its status."""
+    wanted = normalize_edit_code(code)
+    if len(wanted) != 9:
+        return None
+    with cursor() as cur:
+        cur.execute(_sql("SELECT * FROM examples WHERE edit_code = ?"), [wanted])
         row = cur.fetchone()
     return _row_to_dict(row) or None
 

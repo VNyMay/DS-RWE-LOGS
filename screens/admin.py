@@ -8,7 +8,7 @@ import config
 import database
 import ui
 import validation
-from components import forms, messages, navigation
+from components import cache, forms, messages, navigation
 from components.detail import render_example_detail
 
 ui.page_header("Admin / Review", kicker="Moderation")
@@ -67,6 +67,7 @@ def confirm_delete(example: dict) -> None:
         if st.button("Delete permanently", type="primary", icon=":material/delete_forever:", width="stretch"):
             try:
                 database.delete_example(example["id"])
+                cache.invalidate()
                 _flash("success", f'Deleted "{example["title"]}".')
             except database.DatabaseError as exc:
                 _flash("error", f"Could not delete the record: {exc}")
@@ -84,26 +85,31 @@ def _approve(example: dict, notes: str) -> None:
         _flash("error", reason)
         return
     database.approve_example(example["id"], notes if notes.strip() else None)
+    cache.invalidate()
     _flash("success", f'Approved "{example["title"]}". It is now visible to everyone.')
 
 
 def _reject(example: dict, notes: str) -> None:
     database.reject_example(example["id"], notes if notes.strip() else None)
+    cache.invalidate()
     _flash("success", f'Rejected "{example["title"]}".')
 
 
 def _archive(example: dict, notes: str) -> None:
     database.archive_example(example["id"], notes if notes.strip() else None)
+    cache.invalidate()
     _flash("success", f'Archived "{example["title"]}". Visitors can no longer see it.')
 
 
 def _restore(example: dict) -> None:
     database.restore_example(example["id"])
+    cache.invalidate()
     _flash("success", f'"{example["title"]}" was sent back to the review queue.')
 
 
 def _save_notes(example: dict, notes: str) -> None:
     database.set_reviewer_notes(example["id"], notes)
+    cache.invalidate()
     _flash("success", "Reviewer notes saved.")
 
 
@@ -218,6 +224,7 @@ if edit_id is not None:
                     messages.warning(text)
                 try:
                     database.update_example(edit_id, data)
+                    cache.invalidate()
                     st.session_state.pop("admin_edit_id", None)
                     _flash("success", f'Saved changes to "{validation.clean_text(data["title"])}".')
                     st.rerun()
@@ -228,7 +235,7 @@ if edit_id is not None:
 # ---------------------------------------------------------------- tabs
 
 try:
-    stats = database.get_statistics()
+    stats = cache.statistics()
     pending = database.get_pending_examples()
 except database.DatabaseError as exc:
     messages.database_error(exc)
@@ -349,6 +356,7 @@ elif active_view == "export":
             if st.button("Delete demonstration records", icon=":material/delete_sweep:", disabled=not confirm):
                 try:
                     removed = database.delete_demo_examples()
+                    cache.invalidate()
                     _flash("success", f"Removed {removed} demonstration record{'s' if removed != 1 else ''}.")
                 except database.DatabaseError as exc:
                     _flash("error", f"Could not delete the demonstration records: {exc}")
