@@ -20,22 +20,9 @@ import config
 
 # ---------------------------------------------------------------- tokens
 
-# Same values as Secure_Lan's tokens.css, one set per theme.
+# One light token set: the app is white with a green accent, whatever the
+# browser or operating system prefers, so the styling can never flip on reload.
 _TOKENS = {
-    "dark": {
-        "base": "#06110d", "panel": "#0a1914", "raised": "#11261e", "hover": "#173228",
-        "line": "rgba(190, 255, 230, 0.09)", "line-strong": "rgba(190, 255, 230, 0.18)",
-        "text": "#eef5f1", "muted": "#8fa69b", "link": "#4fd8b0",
-        "glow": "rgba(0, 148, 110, 0.22)",
-        "shadow-sm": "0 1px 2px rgba(0,0,0,.4), 0 2px 8px rgba(0,0,0,.25)",
-        "shadow-md": "0 14px 32px -14px rgba(0,0,0,.7), 0 4px 10px -4px rgba(0,0,0,.4)",
-        "shadow-lg": "0 34px 70px -24px rgba(0,0,0,.85), 0 14px 28px -14px rgba(0,0,0,.5)",
-        "amber-bg": "rgba(241, 160, 1, 0.16)", "amber-fg": "#ffd27a",
-        "green-bg": "rgba(0, 148, 110, 0.18)", "green-fg": "#4fd8b0",
-        "red-bg": "rgba(229, 72, 77, 0.16)", "red-fg": "#ff8a8e",
-        "gray-bg": "rgba(143, 166, 155, 0.16)", "gray-fg": "#b7c6be",
-        "gold-on": "#1a1200",
-    },
     "light": {
         "base": "#ffffff", "panel": "#ffffff", "raised": "#f1f6f3", "hover": "#e4eee8",
         "line": "#e1eae5", "line-strong": "#c9d9d1",
@@ -61,11 +48,8 @@ _COMMON = {
 
 
 def theme_type() -> str:
-    """'light' or 'dark', following the active Streamlit theme (the app ships light only)."""
-    try:
-        return "dark" if st.context.theme.type == "dark" else "light"
-    except Exception:  # noqa: BLE001 - bare mode
-        return "light"
+    """Always 'light': the casebook ships a single white theme."""
+    return "light"
 
 
 def _css_variables() -> str:
