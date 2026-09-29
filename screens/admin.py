@@ -242,9 +242,17 @@ ui.metric_row([
 ])
 st.markdown("")
 
-tab_queue, tab_all, tab_export = st.tabs([f"Pending review ({len(pending)})", "All records", "Export"])
+VIEWS = ["pending", "all", "export"]
+VIEW_LABELS = {"pending": f"Pending review ({len(pending)})", "all": "All records", "export": "Export"}
+active_view = st.segmented_control(
+    "View", VIEWS, key="admin_active_view", default="pending",
+    format_func=lambda v: VIEW_LABELS[v], label_visibility="collapsed",
+)
+if active_view is None:  # a widget-level rerun can briefly clear the selection
+    active_view = "pending"
+st.markdown("")
 
-with tab_queue:
+if active_view == "pending":
     if not pending:
         ui.empty_state("Queue is empty", "No submissions waiting for review.", icon="✅")
     else:
@@ -264,7 +272,7 @@ with tab_queue:
         for item in shown:
             record_row(item, key_prefix="queue")
 
-with tab_all:
+elif active_view == "all":
     f1, f2, f3 = st.columns([3, 2, 2])
     with f1:
         q_all = st.text_input("Search all records", key="admin_all_search", placeholder="Search every record...", label_visibility="collapsed")
@@ -293,7 +301,7 @@ with tab_all:
         if len(rows) > 60:
             ui.note("Showing the first 60 cards. Narrow the search to see the rest.")
 
-with tab_export:
+elif active_view == "export":
     ui.section_heading("Export CSV")
     e1, e2 = st.columns(2, gap="large")
     with e1:

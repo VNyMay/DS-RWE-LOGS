@@ -16,12 +16,33 @@ PAGE_ANALYTICS = "screens/analytics.py"
 PAGE_ADMIN = "screens/admin.py"
 
 QUERY_EXAMPLE = "example"  # ?example=<id> opens a detail page
+QUERY_SESSION = "session"  # ?session=<token> keeps an admin signed in across a refresh
 
 
 # ---------------------------------------------------------------- admin session
 
+def _session_token() -> str | None:
+    """A token derived from the admin password, not the password itself.
+
+    Kept in the URL so a browser refresh (which drops Streamlit's own
+    session state) does not force a re-login. Changing the admin password
+    invalidates every outstanding link.
+    """
+    password = config.get_admin_password()
+    if not password:
+        return None
+    return hmac.new(password.encode("utf-8"), b"digital-society-casebook-admin", "sha256").hexdigest()[:32]
+
+
 def is_admin() -> bool:
-    return bool(st.session_state.get("is_admin", False))
+    if st.session_state.get("is_admin"):
+        return True
+    token = _session_token()
+    supplied = st.query_params.get(QUERY_SESSION)
+    if token and supplied and hmac.compare_digest(supplied, token):
+        st.session_state["is_admin"] = True
+        return True
+    return False
 
 
 def try_login(password: str) -> bool:
@@ -31,12 +52,17 @@ def try_login(password: str) -> bool:
         return False
     if hmac.compare_digest(password.encode("utf-8"), expected.encode("utf-8")):
         st.session_state["is_admin"] = True
+        token = _session_token()
+        if token:
+            st.query_params[QUERY_SESSION] = token
         return True
     return False
 
 
 def logout() -> None:
     st.session_state["is_admin"] = False
+    if QUERY_SESSION in st.query_params:
+        del st.query_params[QUERY_SESSION]
 
 
 # ---------------------------------------------------------------- navigation helpers

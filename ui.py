@@ -94,8 +94,6 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible, [tabindex]
 [data-baseweb="input"] input:focus, [data-baseweb="textarea"] textarea:focus, [data-baseweb="select"] input:focus { outline: none !important; box-shadow: none !important; }
 [data-testid="stWidgetLabel"] p { font-weight: 600; font-size: 13.5px; }
 [data-testid="stExpander"] details { border-radius: var(--dsc-radius-small); }
-.stTabs [data-baseweb="tab-list"] { gap: 6px; }
-.stTabs [data-baseweb="tab"] { font-weight: 600; }
 [data-testid="stSegmentedControl"] button, [data-testid="stPills"] button { font-weight: 600; }
 [data-testid="stSidebar"] .stButton > button { background: #ffffff; }
 .stButton > button[kind="secondary"], .stDownloadButton > button, .stFormSubmitButton > button[kind="secondary"] { background: #ffffff; }

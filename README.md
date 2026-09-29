@@ -167,6 +167,7 @@ The `.gitignore` keeps `secrets.toml`, `.env`, the database file and virtual env
 - Visitors can only read approved records; pending, rejected and archived records and reviewer notes are never exposed, including in public exports.
 - Deleting a record asks for confirmation; deleting demo records requires a checkbox first.
 - Source URLs are validated for format only. Check them yourself before citing.
+- Signing in as admin keeps you signed in across a page refresh by putting a token in the URL (`?session=...`). It is not the password itself, but anyone who gets that exact link can act as admin until you sign out or change the password. Do not share a URL that contains `?session=`.
 
 ## Not yet implemented
 
