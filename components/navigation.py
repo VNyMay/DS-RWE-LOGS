@@ -75,13 +75,12 @@ def sidebar_footer(pending_count: int | None = None) -> None:
     with st.sidebar:
         st.markdown("")
         if is_admin():
-            label = "Signed in as administrator"
+            label = "Administrator"
             if pending_count:
-                label += f" · {pending_count} pending"
+                label += f" \u00b7 {pending_count} pending"
             st.caption(label)
             if st.button("Sign out", key="sidebar-logout", width="stretch"):
                 logout()
                 st.rerun()
         else:
-            st.caption("Browsing as a visitor. Moderators sign in on the Admin page.")
-        st.caption(config.APP_SUBTITLE)
+            st.caption("Visitor")

@@ -11,11 +11,7 @@ import validation
 from components import forms, messages, navigation
 from components.detail import render_example_detail
 
-ui.page_header(
-    "Admin / Review",
-    "Approve, reject, edit, archive or delete submissions, and export the casebook.",
-    kicker="Moderation",
-)
+ui.page_header("Admin / Review", kicker="Moderation")
 
 if not st.session_state.get("db_ready", True):
     messages.database_error()
@@ -40,7 +36,6 @@ if not navigation.is_admin():
 
     with st.container(border=True, key="section-admin-login"):
         ui.kicker("Moderators only")
-        st.markdown("Enter the admin password to open the review queue. Visitors never see pending, rejected or archived records.")
         with st.form("admin-login", border=False):
             password = st.text_input("Admin password", type="password", autocomplete="current-password")
             if st.form_submit_button("Sign in", type="primary", icon=":material/login:"):
@@ -250,7 +245,7 @@ tab_queue, tab_all, tab_export = st.tabs([f"Pending review ({len(pending)})", "A
 
 with tab_queue:
     if not pending:
-        ui.empty_state("No submissions waiting", "There are currently no submissions waiting for review.", icon="✅")
+        ui.empty_state("Queue is empty", "No submissions waiting for review.", icon="✅")
     else:
         q = st.text_input("Search pending submissions", key="admin_queue_search", placeholder="Title, contributor, technology...", label_visibility="collapsed")
         shown = pending
@@ -286,7 +281,7 @@ with tab_all:
     if not rows:
         ui.empty_state("No records", "Nothing matches this search and status.", icon="🗂️")
     else:
-        ui.note(f"{total} record{'s' if total != 1 else ''}. Expand 'Overview table' for a compact view, or scroll the cards to act on a record.")
+        ui.note(f"{total} record{'s' if total != 1 else ''}")
         with st.expander("Overview table"):
             import pandas as pd
 
@@ -298,12 +293,12 @@ with tab_all:
             ui.note("Showing the first 60 cards. Narrow the search to see the rest.")
 
 with tab_export:
-    ui.section_heading("Export to CSV", "Public exports never include reviewer notes.")
+    ui.section_heading("Export CSV")
     e1, e2 = st.columns(2, gap="large")
     with e1:
         with st.container(border=True, key="section-export-public"):
             ui.kicker("Public")
-            st.markdown("Approved examples only, without private fields. Safe to share.")
+            st.markdown("Approved examples, no private fields.")
             try:
                 public = database.export_examples(status="approved", include_private=False)
                 st.download_button(
@@ -320,7 +315,7 @@ with tab_export:
     with e2:
         with st.container(border=True, key="section-export-all"):
             ui.kicker("Full backup")
-            st.markdown("Every record in every status.")
+            st.markdown("Every record, every status.")
             include_private = st.checkbox("Include private reviewer notes", value=False)
             try:
                 everything = database.export_examples(status=None, include_private=include_private)
@@ -339,9 +334,9 @@ with tab_export:
     with st.container(border=True, key="section-export-demo"):
         ui.kicker("Demonstration data")
         demo_total = sum(1 for _ in database.list_examples(status=None) if _.get("is_demo"))
-        st.markdown(f"There are **{demo_total}** demonstration records (added by `seed_data.py`). They are labelled on every card.")
+        st.markdown(f"**{demo_total}** demo record{'s' if demo_total != 1 else ''} in the database.")
         if demo_total:
-            confirm = st.checkbox("I understand this permanently deletes every demonstration record", key="confirm_demo_delete")
+            confirm = st.checkbox("Permanently delete all demo records", key="confirm_demo_delete")
             if st.button("Delete demonstration records", icon=":material/delete_sweep:", disabled=not confirm):
                 try:
                     removed = database.delete_demo_examples()

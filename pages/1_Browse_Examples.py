@@ -44,8 +44,8 @@ if example_id is not None:
 
     if example is None:
         ui.empty_state(
-            "This example is not available",
-            "It may still be waiting for review, or it may have been removed. Browse the approved cases instead.",
+            "Example not available",
+            "It may still be under review or was removed.",
             icon="🔎",
         )
         st.stop()
@@ -61,11 +61,7 @@ if example_id is not None:
 
 # ---------------------------------------------------------------- list view
 
-ui.page_header(
-    "Browse examples",
-    "Search by keyword, then narrow down by course level, category, technology, location, year or ethical issue. Filters combine.",
-    kicker="Explore",
-)
+ui.page_header("Browse examples", kicker="Explore")
 
 # Filters arriving from other pages (Home category buttons, SL/HL buttons).
 prefill = st.session_state.pop("browse_prefill", None)
@@ -128,7 +124,7 @@ with st.container(border=True, key="section-browse-filters"):
             status_choice = st.selectbox("Status (admin)", [ANY] + config.STATUSES, key="browse_status", format_func=lambda s: s if s == ANY else config.STATUS_LABELS[s])
         else:
             status_choice = "approved"
-            st.selectbox("Status", ["Approved"], disabled=True, help="Visitors see approved examples only.")
+            st.selectbox("Status", ["Approved"], disabled=True)
 
     active = [
         label for label, value in (
@@ -139,7 +135,7 @@ with st.container(border=True, key="section-browse-filters"):
     ]
     c1, c2 = st.columns([6, 1])
     with c1:
-        ui.note("Active filters: " + ", ".join(active) if active else "No filters active. Showing every example.")
+        ui.note("Filters: " + ", ".join(active) if active else "Showing all examples.")
     with c2:
         if st.button("Clear", key="browse_clear", disabled=not active, width="stretch"):
             for key in ("browse_query", "browse_level", "browse_category", "browse_technology", "browse_country", "browse_issue", "browse_years", "browse_sort", "browse_status"):
@@ -194,8 +190,8 @@ if total == 0:
         )
     else:
         ui.empty_state(
-            "Your casebook is empty",
-            "Submit the first sourced Digital Society example. It appears here once a moderator approves it.",
+            "No examples yet",
+            "Submit the first sourced example.",
             icon="📚",
         )
         if st.button("Submit an example", type="primary", icon=":material/add_circle:"):
@@ -203,10 +199,7 @@ if total == 0:
 else:
     first = (page - 1) * config.PAGE_SIZE + 1
     last = min(total, page * config.PAGE_SIZE)
-    ui.section_heading(
-        f"{total} example{'s' if total != 1 else ''}",
-        f"Showing {first} to {last}. Sorted by {sort_label.lower()}.",
-    )
+    ui.section_heading(f"{total} example{'s' if total != 1 else ''}", f"{first}-{last} of {total}" if pages_total > 1 else None)
     cards.example_grid(results, columns=2, key_prefix="browse", show_status=is_admin)
 
     if pages_total > 1:

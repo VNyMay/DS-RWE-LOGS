@@ -55,7 +55,6 @@ def render_example_detail(example: dict, is_admin: bool = False, key_prefix: str
         with st.container(border=True, key=f"section-detail-sources{k}"):
             ui.kicker("Sources")
             ui.source_list(example.get("source_url"), database.split_list(example.get("additional_sources")))
-            ui.note("Sources open in a new tab. The casebook records them as submitted; check them yourself before citing.")
 
         with st.container(border=True, key=f"section-detail-submission{k}"):
             ui.kicker("Submission")
@@ -102,9 +101,3 @@ def render_example_detail(example: dict, is_admin: bool = False, key_prefix: str
             with st.container(border=True, key=f"section-detail-conclusion{k}"):
                 ui.kicker("Digital Society analysis")
                 ui.detail_section("Conclusion", example.get("conclusion"))
-
-        missing = [title for title, body in impacts + issues if not body]
-        if missing and not example.get("conclusion"):
-            missing.append("Conclusion")
-        if missing:
-            ui.note("Not specified for this case: " + ", ".join(missing).lower() + ".")

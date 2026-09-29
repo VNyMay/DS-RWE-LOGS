@@ -15,8 +15,7 @@ st.html(
     '<div class="dsc-hero">'
     '<p class="dsc-kicker">IB Digital Society</p>'
     f'<h1 class="dsc-title">{ui.esc(config.APP_NAME)}</h1>'
-    f'<p class="dsc-subtitle">{ui.esc(config.APP_SUBTITLE)} Collect evidence, compare cases across SL and HL, '
-    "and build balanced analysis from credible sources.</p>"
+    f'<p class="dsc-subtitle">{ui.esc(config.APP_SUBTITLE)}</p>'
     "</div>"
 )
 left, right, _ = st.columns([2, 2, 5])
@@ -53,12 +52,6 @@ if navigation.is_admin():
     metrics.append(("Pending review", stats["pending"], "Waiting for a moderator"))
 ui.metric_row(metrics)
 
-if stats["demo_count"]:
-    ui.note(
-        f"{stats['demo_count']} of the approved examples are demonstration records added by seed_data.py. "
-        "They are labelled 'Demo record' and can be removed at any time."
-    )
-
 st.markdown("")
 
 # ---------------------------------------------------------------- recent + categories
@@ -66,7 +59,7 @@ st.markdown("")
 main, side = st.columns([8, 4], gap="large")
 
 with main:
-    ui.section_heading("Recently added", "The latest approved cases in the casebook.")
+    ui.section_heading("Recently added")
     if recent:
         cards.example_grid(recent, columns=2, key_prefix="home", compact=True)
     else:
@@ -77,27 +70,20 @@ with main:
         )
 
 with side:
-    ui.section_heading("Popular categories", "Tap a category to browse it.")
+    ui.section_heading("Categories")
     if stats["by_category"]:
         for category, count in stats["by_category"][:8]:
             if st.button(f"{category}  ·  {count}", key=f"home-cat-{category}", width="stretch"):
                 st.session_state["browse_prefill"] = {"category": category}
                 navigation.go(navigation.PAGE_BROWSE)
     else:
-        ui.note("Categories appear here as soon as examples are approved.")
-
-    st.markdown("")
-    ui.section_heading("Contribute", None)
-    ui.callout(
-        "Found a real-world case about technology and society? Add it with a credible source. "
-        "Every submission is reviewed before it is published, and your name is shown as the contributor."
-    )
+        ui.note("No categories yet.")
 
 st.markdown("")
 
 # ---------------------------------------------------------------- SL / HL sections
 
-ui.section_heading("Standard Level and Higher Level", "Every case is tagged for the course level it suits best.")
+ui.section_heading("SL and HL")
 sl_col, hl_col = st.columns(2, gap="large")
 
 for column, level, examples in ((sl_col, "SL", latest_sl), (hl_col, "HL", latest_hl)):
@@ -105,8 +91,7 @@ for column, level, examples in ((sl_col, "SL", latest_sl), (hl_col, "HL", latest
         with st.container(border=True, key=f"section-home-{level.lower()}"):
             st.html(
                 ui.level_badge_html(level)
-                + f'<p class="dsc-note" style="margin:8px 0 4px">{ui.esc(config.LEVEL_HELP[level])}</p>'
-                + f'<p class="dsc-metric-value" style="font-size:26px">{stats["by_level"][level]} '
+                + f'<p class="dsc-metric-value" style="font-size:26px;margin-top:10px">{stats["by_level"][level]} '
                 f'<span class="dsc-note">approved case{"s" if stats["by_level"][level] != 1 else ""}</span></p>'
             )
             if examples:
@@ -127,11 +112,11 @@ st.markdown("")
 
 # ---------------------------------------------------------------- how it works
 
-ui.section_heading("How the casebook works", "From a news story to a reviewed, searchable case in four steps.")
+ui.section_heading("How it works")
 with st.container(border=True, key="section-home-how"):
     ui.steps([
-        ("Find a real case", "A news report, court ruling, research paper or official statement about a digital system and its effects."),
-        ("Describe and analyse it", "Use the structured form: what happened, who was involved, positive and negative impacts, ethical, privacy, security, environmental and legal issues."),
-        ("Add your sources and name", "A main source URL is required. Your name or nickname is shown next to the case as its contributor."),
-        ("Review and publish", "A moderator checks the case and its sources. Approved cases become searchable by everyone; the rest stay private."),
+        ("Find a real case", "News, reports, rulings, research."),
+        ("Describe it", "What happened, impacts, issues."),
+        ("Add a source and your name", "One source URL is required."),
+        ("Review, then publish", "Approved cases become public."),
     ])

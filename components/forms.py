@@ -20,7 +20,7 @@ def _label(text: str, required: bool = False) -> str:
     return f"{text} *" if required else text
 
 
-def _section(title: str, subtitle: str, key: str):
+def _section(title: str, subtitle: str | None, key: str):
     container = st.container(border=True, key=f"section-form-{key}")
     with container:
         ui.section_heading(title, subtitle)
@@ -40,7 +40,7 @@ def example_form(initial: dict | None = None, key: str = "submit", submit_label:
 
     with st.form(key=f"form-{key}", border=False, clear_on_submit=False):
         # ---------------------------------------------------- 1. basics
-        with _section("1. Basic information", "Identify the case so other people can find it.", f"{key}-basics"):
+        with _section("1. Basics", None, f"{key}-basics"):
             title = st.text_input(
                 _label("Title", True),
                 value=values.get("title") or "",
@@ -107,7 +107,7 @@ def example_form(initial: dict | None = None, key: str = "submit", submit_label:
                 )
 
         # ---------------------------------------------------- 2. description
-        with _section("2. Case description", "Tell the story: who used the technology, where, and what followed.", f"{key}-story"):
+        with _section("2. The case", None, f"{key}-story"):
             description = st.text_area(
                 _label("What happened?", True),
                 value=values.get("description") or "",
@@ -144,7 +144,7 @@ def example_form(initial: dict | None = None, key: str = "submit", submit_label:
                 )
 
         # ---------------------------------------------------- 3. analysis
-        with _section("3. Impacts and analysis", "Balanced entries score best: include benefits as well as harms. Leave a box empty if the information is genuinely unavailable.", f"{key}-analysis"):
+        with _section("3. Impacts and analysis", "Optional. Include benefits as well as harms.", f"{key}-analysis"):
             left, right = st.columns(2)
             with left:
                 positive_impacts = st.text_area(
@@ -198,7 +198,7 @@ def example_form(initial: dict | None = None, key: str = "submit", submit_label:
                 )
 
         # ---------------------------------------------------- 4. sources
-        with _section("4. Sources and contributor", "Every case needs evidence. Your name is shown publicly next to the example.", f"{key}-sources"):
+        with _section("4. Sources and your name", None, f"{key}-sources"):
             source_url = st.text_input(
                 _label("Main source URL", True),
                 value=values.get("source_url") or "",
@@ -228,7 +228,7 @@ def example_form(initial: dict | None = None, key: str = "submit", submit_label:
                     help="Optional. Comma-separated keywords that help searching.",
                 )
 
-        st.html('<p class="dsc-note">Fields marked <span class="dsc-required">*</span> are required. Everything else is optional; leave it empty rather than typing "-".</p>')
+        st.html('<p class="dsc-note"><span class="dsc-required">*</span> required</p>')
         submitted = st.form_submit_button(submit_label, type="primary", icon=":material/send:", width="stretch")
 
     if not submitted:

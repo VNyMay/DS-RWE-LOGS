@@ -10,11 +10,7 @@ import ui
 import validation
 from components import forms, messages, navigation
 
-ui.page_header(
-    "Submit an example",
-    "Add a real-world case about technology and society. Submissions are reviewed before they are published.",
-    kicker="Contribute",
-)
+ui.page_header("Submit an example", "Reviewed before publishing.", kicker="Contribute")
 
 if not st.session_state.get("db_ready", True):
     messages.database_error()
@@ -50,17 +46,9 @@ if last:
     with st.container(border=True, key="section-submit-done"):
         ui.kicker("Submitted")
         st.html(
-            f'<h2 class="dsc-section-title" style="font-size:24px">Thank you, {ui.esc(last["submitted_by"])}. Your example was submitted.</h2>'
-            f'<p class="dsc-subtitle">"{ui.esc(last["title"])}" is now <strong>pending review</strong> '
-            f'(record #{last["id"]}, {ui.esc(last.get("level") or "SL")}).</p>'
-        )
-        st.html(
-            "<div>" + ui.status_badge_html("pending") + "</div>"
-            '<ul class="dsc-info-list" style="margin-top:10px">'
-            '<li><span class="k">Next step</span><span class="v">A moderator will check the case and its sources.</span></li>'
-            '<li><span class="k">Visibility</span><span class="v">It will not appear publicly until it is approved.</span></li>'
-            '<li><span class="k">Sources</span><span class="v">Keep your source information accurate. Cases without a working source cannot be approved.</span></li>'
-            "</ul>"
+            f'<h2 class="dsc-section-title" style="font-size:24px">Thanks, {ui.esc(last["submitted_by"])}.</h2>'
+            f'<p class="dsc-subtitle">"{ui.esc(last["title"])}" is pending review and will appear once approved.</p>'
+            f'<div style="margin-top:12px">{ui.status_badge_html("pending")}{ui.level_badge_html(last.get("level") or "SL")}</div>'
         )
         st.markdown("")
         b1, b2, _ = st.columns([2, 2, 4])
@@ -73,19 +61,6 @@ if last:
                 st.session_state.pop("last_submission", None)
                 navigation.go(navigation.PAGE_BROWSE)
     st.stop()
-
-# ---------------------------------------------------------------- guidance
-
-with st.expander("What makes a strong Digital Society case?", expanded=False):
-    st.markdown(
-        """
-- **Be specific.** Name the technology, the organisation using it, the place and the year.
-- **Show both sides.** Record positive impacts as well as harms; balanced entries are more useful for analysis.
-- **Separate facts from analysis.** Describe what happened first, then discuss ethics, privacy, security, environment and law.
-- **Cite credible sources.** News organisations, official reports, court documents and peer-reviewed research. Wikipedia is a starting point, not a final source.
-- **Leave unknowns empty.** If a detail is genuinely unavailable, leave the box blank rather than typing "-".
-        """
-    )
 
 # ---------------------------------------------------------------- form
 
@@ -115,7 +90,6 @@ if data is not None:
 elif pending:
     for text in st.session_state.get("submit_pending_warnings", []):
         messages.warning(text)
-    ui.note("Please check the warnings above. You can still submit if you are confident the example is new and the sources are correct.")
     w1, w2, _ = st.columns([2, 2, 4])
     with w1:
         if st.button("Submit anyway", type="primary", icon=":material/send:", width="stretch"):

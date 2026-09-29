@@ -22,11 +22,7 @@ BAR_COLOR = "#00946e" if DARK else "#027554"
 INK = "#8fa69b" if DARK else "#56695f"
 GRID = "rgba(190,255,230,0.10)" if DARK else "rgba(0,82,63,0.12)"
 
-ui.page_header(
-    "Analytics",
-    "How the approved cases are spread across categories, technologies, places, years, ethical issues and course levels.",
-    kicker="Insights",
-)
+ui.page_header("Analytics", kicker="Insights")
 
 if not st.session_state.get("db_ready", True):
     messages.database_error()
@@ -49,7 +45,7 @@ ui.metric_row([
 st.markdown("")
 
 if navigation.is_admin():
-    ui.section_heading("Review pipeline", "Visible to administrators only.")
+    ui.section_heading("Review pipeline")
     ui.metric_row([
         ("Pending", stats["by_status"]["pending"], "Awaiting review"),
         ("Approved", stats["by_status"]["approved"], "Published"),
@@ -61,7 +57,7 @@ if navigation.is_admin():
 if stats["approved"] == 0:
     ui.empty_state(
         "Nothing to chart yet",
-        "Charts appear once at least one example has been approved. Submit a case or approve a pending one.",
+        "Charts appear once an example is approved.",
         icon="📊",
     )
     st.stop()
@@ -72,7 +68,9 @@ if stats["approved"] == 0:
 def _bar_chart(frame: pd.DataFrame, label: str, horizontal: bool) -> alt.Chart:
     """A single-series bar chart styled to the casebook theme."""
     axis_common = dict(labelColor=INK, titleColor=INK, tickColor=GRID, domainColor=GRID, gridColor=GRID, labelFontSize=12, titleFontSize=12)
-    count_axis = alt.Axis(tickMinStep=1, format="d", title="Examples", **axis_common)
+    top_value = int(frame["Examples"].max()) if len(frame) else 1
+    step = max(1, -(-top_value // 8))  # at most ~8 whole-number ticks
+    count_axis = alt.Axis(values=list(range(0, top_value + step, step)), format="d", title="Examples", **axis_common)
     label_axis = alt.Axis(title=None, labelLimit=220, **axis_common)
     mark = alt.Chart(frame).mark_bar(color=BAR_COLOR, cornerRadiusEnd=4, size=18 if horizontal else 26)
     if horizontal:
@@ -90,7 +88,7 @@ def _bar_chart(frame: pd.DataFrame, label: str, horizontal: bool) -> alt.Chart:
     return chart.configure_view(strokeWidth=0).configure(background="transparent")
 
 
-def bar_block(title: str, subtitle: str, pairs: list[tuple], label: str, key: str, horizontal: bool = True, top: int | None = None) -> None:
+def bar_block(title: str, subtitle: str | None, pairs: list[tuple], label: str, key: str, horizontal: bool = True, top: int | None = None) -> None:
     """One sorted single-series bar chart with an accompanying table view."""
     with st.container(border=True, key=f"section-analytics-{key}"):
         ui.section_heading(title, subtitle)
@@ -103,7 +101,7 @@ def bar_block(title: str, subtitle: str, pairs: list[tuple], label: str, key: st
         height = max(200, 30 * len(shown) + 50) if horizontal else 260
         st.altair_chart(_bar_chart(frame, label, horizontal).properties(height=height), width="stretch")
         if top and len(pairs) > top:
-            ui.note(f"Top {top} of {len(pairs)} shown. The table below lists everything.")
+            ui.note(f"Top {top} of {len(pairs)}")
         with st.expander("View as table"):
             st.dataframe(pd.DataFrame(pairs, columns=[label, "Examples"]), hide_index=True, width="stretch")
 
@@ -111,7 +109,7 @@ def bar_block(title: str, subtitle: str, pairs: list[tuple], label: str, key: st
 left, right = st.columns(2, gap="large")
 with left:
     with st.container(border=True, key="section-analytics-level"):
-        ui.section_heading("Course level", "Standard Level versus Higher Level cases.")
+        ui.section_heading("Course level")
         sl, hl = stats["by_level"]["SL"], stats["by_level"]["HL"]
         c1, c2 = st.columns(2)
         with c1:
@@ -127,13 +125,13 @@ with left:
                 f'<p class="dsc-note" style="margin-top:8px">SL {round(100 * sl / total)}% · HL {round(100 * hl / total)}%</p>'
             )
 with right:
-    bar_block("Examples by year", "When the cases happened or became public.", stats["by_year"], "Year", "year", horizontal=False)
+    bar_block("By year", None, stats["by_year"], "Year", "year", horizontal=False)
 
-bar_block("Examples by category", "Which Digital Society topics the casebook covers.", stats["by_category"], "Category", "category")
-bar_block("Examples by ethical issue", "Each case can raise several issues, so totals exceed the number of cases.", stats["by_ethical_issue"], "Ethical issue", "issue")
+bar_block("By category", None, stats["by_category"], "Category", "category")
+bar_block("By ethical issue", "A case can raise several issues.", stats["by_ethical_issue"], "Ethical issue", "issue")
 
 left, right = st.columns(2, gap="large")
 with left:
-    bar_block("Examples by technology", "The systems at the centre of each case.", stats["by_technology"], "Technology", "technology", top=10)
+    bar_block("By technology", None, stats["by_technology"], "Technology", "technology", top=10)
 with right:
-    bar_block("Examples by country", "Where the cases took place.", stats["by_country"], "Country", "country", top=10)
+    bar_block("By country", None, stats["by_country"], "Country", "country", top=10)

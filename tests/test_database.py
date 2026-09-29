@@ -43,8 +43,10 @@ def test_missing_required_field_raises(example):
 def test_search_and_combined_filters(example):
     first = database.create_example(example, status="approved")
     database.create_example(
-        {**example, "title": "Smart city sensors in Singapore", "country": "Singapore", "year": 2019,
-         "category": "Surveillance", "level": "SL", "technology": "IoT sensors", "ethical_issues": ["Surveillance"]},
+        {**example, "title": "Smart city sensors in Singapore", "country": "Singapore", "city": None, "year": 2019,
+         "category": "Surveillance", "level": "SL", "technology": "IoT sensors", "ethical_issues": ["Surveillance"],
+         "summary": "Street sensors track traffic and crowds across the city state.",
+         "description": "Thousands of networked sensors were installed on lamp posts to monitor traffic, noise and crowd density."},
         status="approved",
     )
     database.create_example({**example, "title": "Pending drone case"})  # pending: never shown

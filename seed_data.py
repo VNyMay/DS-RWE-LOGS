@@ -21,7 +21,7 @@ import sys
 import config
 import database
 
-DEMO_SUBMITTER = "Demo data (seed_data.py)"
+DEMO_SUBMITTER = "Demo data"
 
 DEMO_EXAMPLES: list[dict] = [
     {
