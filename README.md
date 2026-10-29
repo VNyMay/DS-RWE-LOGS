@@ -12,7 +12,7 @@ Built with Python and Streamlit. Local data lives in SQLite; the data layer is r
 - **Browse** with keyword search across every descriptive field, independent filters (SL/HL, category, technology, country, year range, ethical issue), five sort orders including relevance, pagination, and a full detail page per case.
 - **Submit** as a three-step guided form (the case, analysis, source and name) with the deeper analysis fields folded into an optional section, clear required-field marking, friendly validation, duplicate-title warnings, and a confirmation screen. Empty optional fields are stored as NULL. A required text field can be skipped by typing a single dash; the title is the only field that cannot be skipped, and a case without a source cannot be approved until a moderator adds one.
 - **3Cs tagging**: every case can be tagged with the seven Digital Society concepts (Change, Expression, Identity, Power, Space, Systems, Values and ethics), the content strands (Data, Algorithms, Computers, Networks and the internet, Media, Artificial intelligence) and the contexts (Cultural, Economic, Environmental, Health, Human knowledge, Political, Social). All three are filters on Browse and charts on Analytics. HL cases can also record an HL extension challenge (global well-being, governance and human rights, sustainable development) and the intervention that addressed it.
-- **Class code**: one shared code (`CONTRIBUTOR_CODE`, for example `IBDP2-2027`) unlocks editing from the sidebar. Whoever enters it sees pending cases in Browse and gets an "Edit this case" button on every detail page. Editing a published case sends it back to the review queue, so nothing changes publicly without the moderator.
+- **Class code**: one shared code (`CONTRIBUTOR_CODE`, for example `your-class-code`) unlocks editing from the sidebar. Whoever enters it sees pending cases in Browse and gets an "Edit this case" button on every detail page. Editing a published case sends it back to the review queue, so nothing changes publicly without the moderator.
 - **Admin / Review** protected by a password from secrets: pending queue with search, approve / reject / edit / archive / restore / delete (with confirmation), private reviewer notes, an all-records view, CSV export (public export never includes reviewer notes), and a demo-data cleaner.
 - **Analytics** with charts by course level, year, category, ethical issue, technology and country, each with a table view, and an empty state when there is nothing to chart.
 - Clean white interface with a deep-green accent, adapted from the Secure_Lan / EXVIN design language.
@@ -74,7 +74,7 @@ Then edit `.streamlit/secrets.toml`:
 
 ```toml
 ADMIN_PASSWORD = "a-long-random-password"
-CONTRIBUTOR_CODE = "IBDP2-2027"
+CONTRIBUTOR_CODE = "your-class-code"
 ```
 
 `secrets.toml` is git-ignored and must never be committed. An `ADMIN_PASSWORD` environment variable works too (secrets take priority). Without a password the Admin page shows setup instructions and stays locked.
@@ -126,7 +126,7 @@ The image is built from the `Dockerfile` in the project root and has been tested
 
 ```powershell
 docker build -t digital-society-casebook .
-docker run -d --name casebook -p 8501:8501 -e ADMIN_PASSWORD=change-me -e CONTRIBUTOR_CODE=IBDP2-2027 -v casebook-data:/app/data digital-society-casebook
+docker run -d --name casebook -p 8501:8501 -e ADMIN_PASSWORD=change-me -e CONTRIBUTOR_CODE=your-class-code -v casebook-data:/app/data digital-society-casebook
 ```
 
 Open http://localhost:8501. `ADMIN_PASSWORD` is passed as an environment variable because `secrets.toml` is never copied into the image. The named volume keeps `data/examples.db` across restarts; add `-e DATABASE_URL=...` instead to use Supabase/PostgreSQL. Any host that runs containers (Fly.io, Railway, Render, a school server) can run this image.
@@ -140,7 +140,7 @@ Open http://localhost:8501. `ADMIN_PASSWORD` is passed as an environment variabl
 3. Under **Advanced settings > Secrets** paste:
    ```toml
    ADMIN_PASSWORD = "a-long-random-password"
-   CONTRIBUTOR_CODE = "IBDP2-2027"
+   CONTRIBUTOR_CODE = "your-class-code"
    DATABASE_URL = "postgresql://..."   # from Supabase, see below
    ```
 4. Deploy. The app gets a public `*.streamlit.app` URL.
